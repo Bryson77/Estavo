@@ -40,7 +40,7 @@ export default function GuestsScreen() {
   const [selectedDuration, setSelectedDuration] = useState(24);
   const [filter, setFilter] = useState<"active" | "all">("active");
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 0 : insets.top;
 
   const activeCodes = guestCodes.filter(
     (g) => g.isActive && new Date(g.validUntil).getTime() > Date.now()
@@ -97,17 +97,15 @@ export default function GuestsScreen() {
         style={[
           styles.header,
           {
-            paddingTop: topPad + 16,
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
+            paddingTop: topPad + 12,
+            backgroundColor: colors.primary,
           },
         ]}
       >
         <View>
-          <Text style={[styles.title, { color: colors.foreground }]}>
-            Guest Access
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+          <Text style={styles.headerLabel}>GUEST ACCESS</Text>
+          <Text style={styles.headerTitle}>Guests</Text>
+          <Text style={styles.headerSub}>
             {activeCodes.length} active · {expiredCodes.length} expired
           </Text>
         </View>
@@ -116,10 +114,10 @@ export default function GuestsScreen() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             setShowModal(true);
           }}
-          style={[styles.addBtn, { backgroundColor: colors.primary }]}
+          style={[styles.addBtn, { backgroundColor: "rgba(255,255,255,0.25)" }]}
           activeOpacity={0.8}
         >
-          <Ionicons name="add" size={22} color={colors.navy} />
+          <Ionicons name="add" size={22} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
@@ -395,6 +393,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 14,
     borderBottomWidth: 1,
+  },
+  headerLabel: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 10,
+    color: "rgba(255,255,255,0.75)",
+    letterSpacing: 1,
+    marginBottom: 3,
+  },
+  headerTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 22,
+    color: "#FFFFFF",
+  },
+  headerSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 2,
   },
   title: {
     fontFamily: "Inter_700Bold",

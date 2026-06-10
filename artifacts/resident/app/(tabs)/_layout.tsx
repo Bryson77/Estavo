@@ -16,17 +16,17 @@ function NativeTabLayout() {
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="gate">
-        <Icon sf={{ default: "door.left.hand.closed", selected: "door.left.hand.open" }} />
-        <Label>Gate</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="guests">
+      <NativeTabs.Trigger name="community">
         <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
-        <Label>Guests</Label>
+        <Label>Community</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="reports">
-        <Icon sf={{ default: "wrench", selected: "wrench.fill" }} />
+        <Icon sf={{ default: "doc.text", selected: "doc.text.fill" }} />
         <Label>Reports</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="guests">
+        <Icon sf={{ default: "key", selected: "key.fill" }} />
+        <Label>Guests</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -83,21 +83,9 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="gate"
+        name="community"
         options={{
-          title: "Gate",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="door.left.hand.closed" tintColor={color} size={24} />
-            ) : (
-              <Ionicons name="car-outline" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="guests"
-        options={{
-          title: "Guests",
+          title: "Community",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="person.2" tintColor={color} size={24} />
@@ -112,12 +100,25 @@ function ClassicTabLayout() {
           title: "Reports",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="wrench" tintColor={color} size={24} />
+              <SymbolView name="doc.text" tintColor={color} size={24} />
             ) : (
-              <Ionicons name="construct-outline" size={22} color={color} />
+              <Ionicons name="document-text-outline" size={22} color={color} />
             ),
         }}
       />
+      <Tabs.Screen
+        name="guests"
+        options={{
+          title: "Guests",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="key" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="key-outline" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen name="gate" options={{ href: null }} />
     </Tabs>
   );
 }

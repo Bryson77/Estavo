@@ -70,15 +70,15 @@ interface AppContextValue {
 
 const defaultProfile: ResidentProfile = {
   id: "resident-001",
-  firstName: "James",
-  lastName: "Hartley",
-  unitNumber: "14",
-  estateName: "Greenfield Estate",
-  estateAddress: "12 Estate Drive, Sandton, Gauteng",
-  email: "james.hartley@email.com",
-  phone: "+27 82 555 0142",
+  firstName: "Thandi",
+  lastName: "Mthembu",
+  unitNumber: "136",
+  estateName: "Hillcrest Estate",
+  estateAddress: "136 Hillcrest Boulevard, Hillcrest, KZN",
+  email: "thandi.mthembu@email.com",
+  phone: "+27 82 555 0136",
   accountStanding: "good",
-  avatarInitials: "JH",
+  avatarInitials: "TM",
 };
 
 const AppContext = createContext<AppContextValue | null>(null);

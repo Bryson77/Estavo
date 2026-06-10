@@ -1,86 +1,88 @@
 const colors = {
   light: {
-    text: "#0F1923",
-    tint: "#00D4AA",
+    text: "#111827",
+    tint: "#1565C0",
 
-    background: "#F5F7FA",
-    foreground: "#0F1923",
+    background: "#F4F6F9",
+    foreground: "#111827",
 
     card: "#FFFFFF",
-    cardForeground: "#0F1923",
+    cardForeground: "#111827",
 
-    primary: "#00D4AA",
-    primaryForeground: "#0F1923",
+    primary: "#1565C0",
+    primaryForeground: "#FFFFFF",
 
-    secondary: "#EBF9F6",
-    secondaryForeground: "#0F1923",
+    secondary: "#E3F0FF",
+    secondaryForeground: "#1565C0",
 
     muted: "#EEF1F5",
     mutedForeground: "#6B7280",
 
-    accent: "#00D4AA",
-    accentForeground: "#0F1923",
+    accent: "#1565C0",
+    accentForeground: "#FFFFFF",
 
-    destructive: "#EF4444",
+    destructive: "#9B1C1C",
     destructiveForeground: "#FFFFFF",
 
-    border: "#E4E8EF",
-    input: "#E4E8EF",
+    border: "#E5E9F0",
+    input: "#E5E9F0",
 
     surface: "#FFFFFF",
-    surfaceElevated: "#F5F7FA",
+    surfaceElevated: "#F4F6F9",
 
-    navy: "#0F1923",
-    navyMid: "#1A2840",
-    navyLight: "#253552",
+    navy: "#1565C0",
+    navyMid: "#1976D2",
+    navyLight: "#2196F3",
     teal: "#00D4AA",
     tealDark: "#00A884",
     amber: "#F59E0B",
     success: "#10B981",
     warning: "#F59E0B",
     error: "#EF4444",
+    emergency: "#8B1C1C",
   },
 
   dark: {
     text: "#F5F7FA",
-    tint: "#00D4AA",
+    tint: "#1976D2",
 
-    background: "#0F1923",
+    background: "#0D1117",
     foreground: "#F5F7FA",
 
-    card: "#1A2840",
+    card: "#161B22",
     cardForeground: "#F5F7FA",
 
-    primary: "#00D4AA",
-    primaryForeground: "#0F1923",
+    primary: "#1976D2",
+    primaryForeground: "#FFFFFF",
 
-    secondary: "#253552",
+    secondary: "#1A2840",
     secondaryForeground: "#F5F7FA",
 
-    muted: "#253552",
+    muted: "#1A2840",
     mutedForeground: "#9CA3AF",
 
-    accent: "#00D4AA",
-    accentForeground: "#0F1923",
+    accent: "#1976D2",
+    accentForeground: "#FFFFFF",
 
-    destructive: "#EF4444",
+    destructive: "#9B1C1C",
     destructiveForeground: "#FFFFFF",
 
     border: "#253552",
     input: "#253552",
 
-    surface: "#1A2840",
-    surfaceElevated: "#253552",
+    surface: "#161B22",
+    surfaceElevated: "#1A2840",
 
-    navy: "#0F1923",
-    navyMid: "#1A2840",
-    navyLight: "#253552",
+    navy: "#1565C0",
+    navyMid: "#1976D2",
+    navyLight: "#2196F3",
     teal: "#00D4AA",
     tealDark: "#00A884",
     amber: "#F59E0B",
     success: "#10B981",
     warning: "#F59E0B",
     error: "#EF4444",
+    emergency: "#9B1C1C",
   },
 
   radius: 12,

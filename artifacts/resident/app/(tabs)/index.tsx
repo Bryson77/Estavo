@@ -1,59 +1,143 @@
 import * as Haptics from "expo-haptics";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
-import { StatusBadge } from "@/components/StatusBadge";
-import { ReportCard } from "@/components/ReportCard";
 
-function QuickStatCard({
-  icon,
+function StatCard({
   label,
   value,
-  color,
-  onPress,
+  sub,
+  iconName,
 }: {
-  icon: string;
   label: string;
   value: string | number;
-  color: string;
-  onPress?: () => void;
+  sub?: string;
+  iconName: string;
 }) {
   const colors = useColors();
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.statCard,
-        {
-          backgroundColor: colors.card,
-          borderColor: colors.border,
-          opacity: pressed ? 0.85 : 1,
-          flex: 1,
-        },
+        { backgroundColor: colors.card, borderColor: colors.border },
       ]}
     >
-      <View style={[styles.statIcon, { backgroundColor: color + "20" }]}>
-        <Ionicons name={icon as any} size={18} color={color} />
+      <View style={styles.statHeader}>
+        <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
+          {label}
+        </Text>
+        <Ionicons name={iconName as any} size={16} color={colors.mutedForeground} />
       </View>
       <Text style={[styles.statValue, { color: colors.foreground }]}>
         {value}
       </Text>
-      <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-        {label}
-      </Text>
-    </Pressable>
+      {sub ? (
+        <Text style={[styles.statSub, { color: colors.mutedForeground }]}>
+          {sub}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function InlineHoldButton({
+  onComplete,
+  color,
+}: {
+  onComplete: () => void;
+  color: string;
+}) {
+  const [isHolding, setIsHolding] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const progress = useRef(new Animated.Value(0)).current;
+  const animRef = useRef<Animated.CompositeAnimation | null>(null);
+  const completedRef = useRef(false);
+
+  const startHold = useCallback(() => {
+    if (completedRef.current) return;
+    setIsHolding(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    animRef.current = Animated.timing(progress, {
+      toValue: 1,
+      duration: 3000,
+      useNativeDriver: false,
+    });
+    animRef.current.start(({ finished }) => {
+      if (finished && !completedRef.current) {
+        completedRef.current = true;
+        setCompleted(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onComplete();
+        setTimeout(() => {
+          completedRef.current = false;
+          setCompleted(false);
+          progress.setValue(0);
+        }, 2000);
+      }
+    });
+  }, [onComplete, progress]);
+
+  const stopHold = useCallback(() => {
+    if (completedRef.current) return;
+    setIsHolding(false);
+    animRef.current?.stop();
+    Animated.timing(progress, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: false,
+    }).start();
+  }, [progress]);
+
+  useEffect(() => () => { animRef.current?.stop(); }, []);
+
+  const fillWidth = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+
+  return (
+    <TouchableWithoutFeedback onPressIn={startHold} onPressOut={stopHold}>
+      <View
+        style={[
+          styles.holdRow,
+          { backgroundColor: "rgba(255,255,255,0.15)" },
+        ]}
+      >
+        {/* progress fill */}
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              borderRadius: 10,
+              backgroundColor: "rgba(255,255,255,0.15)",
+              width: fillWidth as any,
+            },
+          ]}
+        />
+        <Text style={styles.holdText}>
+          {completed ? "Gate opening…" : isHolding ? "Holding…" : "Hold to open"}
+        </Text>
+        <Ionicons
+          name={completed ? "checkmark" : "chevron-forward"}
+          size={16}
+          color="#FFFFFF"
+        />
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -61,376 +145,461 @@ export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { profile, guestCodes, reports, gateActivity } = useApp();
-  const [emergencyPressed, setEmergencyPressed] = useState(false);
+  const { profile, guestCodes, reports, addGateActivity } = useApp();
 
-  const activeGuests = guestCodes.filter(
+  const activeCodes = guestCodes.filter(
     (g) => g.isActive && new Date(g.validUntil).getTime() > Date.now()
   ).length;
-  const openReports = reports.filter((r) =>
+  const guestsInside = guestCodes.filter(
+    (g) => g.isActive && !g.isParcel && new Date(g.validUntil).getTime() > Date.now()
+  ).length;
+  const openTickets = reports.filter((r) =>
     ["open", "in_progress"].includes(r.status)
   ).length;
-  const lastGate = gateActivity[0];
+
+  const topPad = Platform.OS === "web" ? 0 : insets.top;
+  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom + 90;
+
+  const handleGateOpen = () => {
+    addGateActivity({
+      gateLabel: "Main Gate",
+      direction: "entry",
+      triggeredAt: new Date().toISOString(),
+      status: "success",
+    });
+  };
 
   const handleEmergency = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
       "Emergency Alert",
-      "This will alert all security personnel at your estate immediately. Continue?",
+      "Hold for 5 seconds to alert security. This will notify all security personnel immediately.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Send Alert",
+          text: "Alert Security",
           style: "destructive",
           onPress: () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            Alert.alert(
-              "Alert Sent",
-              "Security has been notified. They will respond shortly.",
-              [{ text: "OK" }]
-            );
+            Alert.alert("Alert Sent", "Security has been notified.", [{ text: "OK" }]);
           },
         },
       ]
     );
   };
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const initials = profile.avatarInitials;
+  const firstName = profile.firstName;
+  const estateName = profile.estateName;
+  const unit = profile.unitNumber;
 
   return (
-    <ScrollView
-      style={[styles.root, { backgroundColor: colors.background }]}
-      contentContainerStyle={[
-        styles.content,
-        {
-          paddingTop: topPad + 16,
-          paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 100,
-        },
-      ]}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.greetingLabel, { color: colors.mutedForeground }]}>
-            Good {getTimeOfDay()}
-          </Text>
-          <Text style={[styles.greetingName, { color: colors.foreground }]}>
-            {profile.firstName}
-          </Text>
-        </View>
-        <View style={styles.headerRight}>
-          <View
-            style={[
-              styles.avatar,
-              { backgroundColor: colors.navyMid ?? "#1A2840" },
-            ]}
-          >
-            <Text style={[styles.avatarText, { color: colors.primary }]}>
-              {profile.avatarInitials}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Estate card */}
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+      {/* Blue Header */}
       <View
         style={[
-          styles.estateCard,
-          {
-            backgroundColor: colors.navy,
-          },
+          styles.header,
+          { backgroundColor: colors.primary, paddingTop: topPad + 12 },
         ]}
       >
-        <View style={styles.estateTop}>
+        <View style={styles.headerLeft}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerSub}>
+              RESIDENT · {profile.firstName.toUpperCase()} {profile.lastName.toUpperCase().charAt(0)}.
+            </Text>
+            <Text style={styles.headerTitle}>{estateName}</Text>
+          </View>
+        </View>
+        <Pressable
+          onPress={() => {}}
+          hitSlop={12}
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+        >
+          <Ionicons name="settings-outline" size={22} color="#FFFFFF" />
+        </Pressable>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: bottomPad }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Unit subtitle */}
+        <View style={styles.unitRow}>
+          <Text style={[styles.unitText, { color: colors.mutedForeground }]}>
+            Unit {unit} · {estateName}
+          </Text>
+        </View>
+
+        {/* Greeting */}
+        <View style={styles.greetRow}>
           <View>
-            <Text style={[styles.estateName, { color: "#FFFFFF" }]}>
-              {profile.estateName}
+            <Text style={[styles.greetLabel, { color: colors.mutedForeground }]}>
+              {getGreeting().toUpperCase()}
             </Text>
-            <Text style={[styles.estateUnit, { color: "#FFFFFF99" }]}>
-              Unit {profile.unitNumber} · {profile.estateAddress.split(",")[1]?.trim()}
+            <Text style={[styles.greetName, { color: colors.foreground }]}>
+              {firstName}
             </Text>
           </View>
-          <StatusBadge status={profile.accountStanding} small />
-        </View>
-        <View style={[styles.estateBottom, { borderTopColor: "#FFFFFF18" }]}>
-          <Ionicons name="location-outline" size={12} color="#FFFFFF66" />
-          <Text style={[styles.estateAddress, { color: "#FFFFFF66" }]}>
-            {profile.estateAddress}
-          </Text>
-        </View>
-      </View>
-
-      {/* Quick stats */}
-      <View style={styles.statsRow}>
-        <QuickStatCard
-          icon="people-outline"
-          label="Active Guests"
-          value={activeGuests}
-          color={colors.teal}
-          onPress={() => router.push("/(tabs)/guests")}
-        />
-        <QuickStatCard
-          icon="construct-outline"
-          label="Open Tickets"
-          value={openReports}
-          color={colors.amber}
-          onPress={() => router.push("/(tabs)/reports")}
-        />
-        <QuickStatCard
-          icon="car-outline"
-          label="Gate Today"
-          value={gateActivity.filter((g) => {
-            const d = new Date(g.triggeredAt);
-            const today = new Date();
-            return d.toDateString() === today.toDateString();
-          }).length}
-          color={colors.success}
-          onPress={() => router.push("/(tabs)/gate")}
-        />
-      </View>
-
-      {/* Emergency */}
-      <Pressable
-        onPress={handleEmergency}
-        style={({ pressed }) => [
-          styles.emergencyBtn,
-          {
-            backgroundColor: pressed ? "#991B1B" : "#EF4444",
-            opacity: pressed ? 0.9 : 1,
-          },
-        ]}
-      >
-        <Ionicons name="warning-outline" size={20} color="#FFFFFF" />
-        <Text style={styles.emergencyText}>Emergency Alert</Text>
-      </Pressable>
-
-      {/* Recent activity */}
-      {lastGate && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Last Gate Activity
-          </Text>
-          <View
-            style={[
-              styles.activityRow,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
-            ]}
+          <Pressable
+            style={[styles.bellBtn, { borderColor: colors.border }]}
+            onPress={() => {}}
           >
-            <View
-              style={[
-                styles.activityIcon,
-                { backgroundColor: colors.secondary },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={lastGate.direction === "entry" ? "gate-arrow-right" : "gate"}
-                size={20}
-                color={colors.primary}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.activityLabel, { color: colors.foreground }]}>
-                {lastGate.gateLabel}
-              </Text>
-              <Text
-                style={[styles.activityTime, { color: colors.mutedForeground }]}
-              >
-                {lastGate.direction === "entry" ? "Entry" : "Exit"} ·{" "}
-                {formatTime(lastGate.triggeredAt)}
-              </Text>
-            </View>
-            <StatusBadge status={lastGate.status} small />
-          </View>
+            <Ionicons name="notifications-outline" size={20} color={colors.foreground} />
+          </Pressable>
         </View>
-      )}
 
-      {/* Recent reports */}
-      {reports.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Recent Reports
-            </Text>
-            <Pressable onPress={() => router.push("/(tabs)/reports")}>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>
-                See all
-              </Text>
-            </Pressable>
+        {/* 2×2 stat grid */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statsRow}>
+            <StatCard
+              label="ACTIVE CODES"
+              value={activeCodes}
+              iconName="key-outline"
+            />
+            <StatCard
+              label="GUESTS INSIDE"
+              value={guestsInside}
+              iconName="person-outline"
+            />
           </View>
-          {reports.slice(0, 2).map((r) => (
-            <ReportCard key={r.id} report={r} />
-          ))}
+          <View style={styles.statsRow}>
+            <StatCard
+              label="WEATHER"
+              value="24°"
+              sub="Partly cloudy"
+              iconName="partly-sunny-outline"
+            />
+            <StatCard
+              label="OPEN TICKETS"
+              value={openTickets}
+              iconName="build-outline"
+            />
+          </View>
         </View>
-      )}
-    </ScrollView>
+
+        {/* Main Gate card */}
+        <View style={[styles.gateCard, { backgroundColor: colors.primary }]}>
+          <View style={styles.gateCardTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.gateCardLabel}>MAIN GATE</Text>
+              <Text style={styles.gateCardTitle}>All gates online</Text>
+              <View style={styles.gateStatusRow}>
+                <View style={styles.onlineDot} />
+                <Text style={styles.gateStatusText}>Online</Text>
+              </View>
+            </View>
+            <View style={styles.gateIconCircle}>
+              <Ionicons name="business-outline" size={22} color="#FFFFFF" />
+            </View>
+          </View>
+          <InlineHoldButton onComplete={handleGateOpen} color={colors.primary} />
+        </View>
+
+        {/* Management updates */}
+        <Pressable
+          onPress={() => router.push("/(tabs)/community")}
+          style={({ pressed }) => [
+            styles.updatesCard,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              opacity: pressed ? 0.85 : 1,
+            },
+          ]}
+        >
+          <View style={[styles.updatesIcon, { backgroundColor: colors.secondary }]}>
+            <Ionicons name="mail-outline" size={20} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.updatesLabel, { color: colors.mutedForeground }]}>
+              MANAGEMENT UPDATES
+            </Text>
+            <Text style={[styles.updatesBody, { color: colors.foreground }]}>
+              3 unread notices
+            </Text>
+          </View>
+          <View style={[styles.badgeCircle, { backgroundColor: colors.primary }]}>
+            <Text style={styles.badgeText}>3</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
+        </Pressable>
+
+        {/* Emergency */}
+        <Pressable
+          onPress={handleEmergency}
+          style={({ pressed }) => [
+            styles.emergencyCard,
+            {
+              backgroundColor: pressed ? "#7B1111" : (colors.emergency ?? "#8B1C1C"),
+            },
+          ]}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.emergencyLabel}>EMERGENCY</Text>
+            <Text style={styles.emergencySub}>Hold 5 seconds to alert security</Text>
+          </View>
+          <View style={[styles.emergencyIconCircle, { borderColor: "rgba(255,255,255,0.4)" }]}>
+            <Ionicons name="alarm-outline" size={22} color="#FFFFFF" />
+          </View>
+        </Pressable>
+      </ScrollView>
+    </View>
   );
 }
 
-function getTimeOfDay(): string {
+function getGreeting(): string {
   const h = new Date().getHours();
-  if (h < 12) return "morning";
-  if (h < 17) return "afternoon";
-  return "evening";
-}
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  if (d.toDateString() === today.toDateString()) {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  }
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  content: { paddingHorizontal: 20 },
+  screen: { flex: 1 },
+
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingBottom: 14,
   },
-  greetingLabel: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    marginBottom: 2,
-  },
-  greetingName: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 26,
-  },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  avatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.25)",
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
     fontFamily: "Inter_700Bold",
-    fontSize: 15,
+    fontSize: 13,
+    color: "#FFFFFF",
   },
-  estateCard: {
-    borderRadius: 16,
-    marginBottom: 16,
-    overflow: "hidden",
+  headerInfo: { flex: 1 },
+  headerSub: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 10,
+    color: "rgba(255,255,255,0.75)",
+    letterSpacing: 0.8,
   },
-  estateTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    padding: 16,
-    paddingBottom: 12,
-  },
-  estateName: {
+  headerTitle: {
     fontFamily: "Inter_700Bold",
-    fontSize: 17,
-    marginBottom: 3,
+    fontSize: 16,
+    color: "#FFFFFF",
+    marginTop: 1,
   },
-  estateUnit: {
+
+  unitRow: {
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  unitText: {
     fontFamily: "Inter_400Regular",
     fontSize: 13,
   },
-  estateBottom: {
+
+  greetRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    padding: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingTop: 6,
+    paddingBottom: 18,
   },
-  estateAddress: {
-    fontFamily: "Inter_400Regular",
+  greetLabel: {
+    fontFamily: "Inter_500Medium",
     fontSize: 11,
-    flex: 1,
+    letterSpacing: 1,
+  },
+  greetName: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 28,
+    marginTop: 2,
+  },
+  bellBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  statsGrid: {
+    paddingHorizontal: 14,
+    gap: 10,
+    marginBottom: 14,
   },
   statsRow: {
     flexDirection: "row",
     gap: 10,
-    marginBottom: 14,
   },
   statCard: {
+    flex: 1,
     borderRadius: 14,
     borderWidth: 1,
     padding: 14,
-    alignItems: "flex-start",
     gap: 6,
   },
-  statIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  statValue: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 22,
-  },
-  statLabel: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 10,
-    lineHeight: 14,
-  },
-  emergencyBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: 14,
-    paddingVertical: 14,
-    marginBottom: 24,
-  },
-  emergencyText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 15,
-    color: "#FFFFFF",
-    letterSpacing: 0.3,
-  },
-  section: { marginBottom: 24 },
-  sectionHeader: {
+  statHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
   },
-  sectionTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  seeAll: {
+  statLabel: {
     fontFamily: "Inter_500Medium",
-    fontSize: 13,
+    fontSize: 10,
+    letterSpacing: 0.8,
   },
-  activityRow: {
+  statValue: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 26,
+  },
+  statSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    marginTop: -4,
+  },
+
+  gateCard: {
+    marginHorizontal: 14,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
+    gap: 14,
+  },
+  gateCardTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  gateCardLabel: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    color: "rgba(255,255,255,0.75)",
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  gateCardTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 18,
+    color: "#FFFFFF",
+    marginBottom: 6,
+  },
+  gateStatusRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 6,
+  },
+  onlineDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#4ADE80",
+  },
+  gateStatusText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+  },
+  gateIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  holdRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    overflow: "hidden",
+  },
+  holdText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: "#FFFFFF",
+  },
+
+  updatesCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 14,
     borderRadius: 14,
     borderWidth: 1,
     padding: 14,
+    gap: 12,
+    marginBottom: 12,
   },
-  activityIcon: {
+  updatesIcon: {
     width: 40,
     height: 40,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  activityLabel: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
+  updatesLabel: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 10,
+    letterSpacing: 0.8,
+    marginBottom: 2,
   },
-  activityTime: {
+  updatesBody: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+  },
+  badgeCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 12,
+    color: "#FFFFFF",
+  },
+
+  emergencyCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 14,
+    borderRadius: 14,
+    padding: 18,
+    gap: 12,
+    marginBottom: 8,
+  },
+  emergencyLabel: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
+    color: "#FFFFFF",
+    letterSpacing: 1,
+    marginBottom: 3,
+  },
+  emergencySub: {
     fontFamily: "Inter_400Regular",
     fontSize: 12,
-    marginTop: 2,
+    color: "rgba(255,255,255,0.8)",
+  },
+  emergencyIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

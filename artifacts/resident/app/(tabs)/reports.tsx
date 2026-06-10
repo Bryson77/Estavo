@@ -51,7 +51,7 @@ export default function ReportsScreen() {
   const [category, setCategory] = useState<Category>("maintenance");
   const [priority, setPriority] = useState<Priority>("medium");
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 0 : insets.top;
 
   const filtered =
     statusFilter === "all"
@@ -97,17 +97,15 @@ export default function ReportsScreen() {
         style={[
           styles.header,
           {
-            paddingTop: topPad + 16,
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
+            paddingTop: topPad + 12,
+            backgroundColor: colors.primary,
           },
         ]}
       >
         <View>
-          <Text style={[styles.title, { color: colors.foreground }]}>
-            Maintenance
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+          <Text style={styles.headerLabel}>MAINTENANCE</Text>
+          <Text style={styles.headerTitle}>Reports</Text>
+          <Text style={styles.headerSub}>
             {openTickets} open · {inProgressTickets} in progress
           </Text>
         </View>
@@ -116,10 +114,10 @@ export default function ReportsScreen() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             setShowModal(true);
           }}
-          style={[styles.addBtn, { backgroundColor: colors.primary }]}
+          style={[styles.addBtn, { backgroundColor: "rgba(255,255,255,0.25)" }]}
           activeOpacity={0.8}
         >
-          <Ionicons name="add" size={22} color={colors.navy} />
+          <Ionicons name="add" size={22} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
@@ -376,6 +374,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 14,
     borderBottomWidth: 1,
+  },
+  headerLabel: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 10,
+    color: "rgba(255,255,255,0.75)",
+    letterSpacing: 1,
+    marginBottom: 3,
+  },
+  headerTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 22,
+    color: "#FFFFFF",
+  },
+  headerSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 2,
   },
   title: { fontFamily: "Inter_700Bold", fontSize: 26 },
   subtitle: {
