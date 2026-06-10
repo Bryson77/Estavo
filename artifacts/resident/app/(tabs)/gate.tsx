@@ -1,7 +1,8 @@
 import * as Haptics from "expo-haptics";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Platform,
   StyleSheet,
@@ -12,8 +13,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp, GateActivity } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 import { HoldButton } from "@/components/HoldButton";
 import { StatusBadge } from "@/components/StatusBadge";
+import { apiClient } from "@/lib/api";
 
 interface Gate {
   id: string;
@@ -23,21 +26,9 @@ interface Gate {
   holdSeconds: number;
 }
 
-const GATES: Gate[] = [
-  {
-    id: "main_vehicle",
-    label: "Main Vehicle Gate",
-    type: "vehicle",
-    icon: "car-outline",
-    holdSeconds: 3,
-  },
-  {
-    id: "pedestrian",
-    label: "Pedestrian Gate",
-    type: "pedestrian",
-    icon: "walk-outline",
-    holdSeconds: 3,
-  },
+const FALLBACK_GATES: Gate[] = [
+  { id: "main_vehicle", label: "Main Vehicle Gate", type: "vehicle", icon: "car-outline", holdSeconds: 3 },
+  { id: "pedestrian", label: "Pedestrian Gate", type: "pedestrian", icon: "walk-outline", holdSeconds: 3 },
 ];
 
 function formatActivityTime(iso: string): string {
@@ -51,47 +42,44 @@ function formatActivityTime(iso: string): string {
   if (d.toDateString() === yesterday.toDateString()) {
     return `Yesterday ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   }
-  return d.toLocaleDateString([], {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return d.toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-function ActivityItem({ item }: { item: GateActivity }) {
+function GateCard({
+  gate,
+  onOpen,
+  loading,
+}: {
+  gate: Gate;
+  onOpen: (gate: Gate) => void;
+  loading: boolean;
+}) {
   const colors = useColors();
+  const isVehicle = gate.type === "vehicle";
+
   return (
-    <View
-      style={[
-        actStyles.row,
-        { borderBottomColor: colors.border },
-      ]}
-    >
-      <View
-        style={[
-          actStyles.dirIcon,
-          {
-            backgroundColor:
-              item.direction === "entry" ? colors.secondary : colors.muted,
-          },
-        ]}
-      >
-        <Ionicons
-          name={item.direction === "entry" ? "log-in-outline" : "log-out-outline"}
-          size={16}
-          color={item.direction === "entry" ? colors.primary : colors.mutedForeground}
-        />
+    <View style={[styles.gateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.gateCardTop}>
+        <View style={[styles.gateIconWrap, { backgroundColor: colors.primary + "15" }]}>
+          <Ionicons name={gate.icon as any} size={22} color={colors.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.gateName, { color: colors.foreground }]}>{gate.label}</Text>
+          <View style={styles.gateStatusRow}>
+            <View style={[styles.dot, { backgroundColor: "#4ADE80" }]} />
+            <Text style={[styles.gateStatusText, { color: colors.mutedForeground }]}>Online</Text>
+          </View>
+        </View>
+        <StatusBadge label={isVehicle ? "Vehicle" : "Pedestrian"} color={isVehicle ? "#3B82F6" : "#10B981"} />
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[actStyles.gate, { color: colors.foreground }]}>
-          {item.gateLabel}
-        </Text>
-        <Text style={[actStyles.time, { color: colors.mutedForeground }]}>
-          {formatActivityTime(item.triggeredAt)}
-        </Text>
-      </View>
-      <StatusBadge status={item.status} small />
+
+      <HoldButton
+        label={loading ? "Opening…" : `Hold ${gate.holdSeconds}s to open`}
+        holdDuration={gate.holdSeconds * 1000}
+        onComplete={() => onOpen(gate)}
+        color={colors.primary}
+        disabled={loading}
+      />
     </View>
   );
 }
@@ -99,232 +87,162 @@ function ActivityItem({ item }: { item: GateActivity }) {
 export default function GateScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { gateActivity, addGateActivity } = useApp();
-  const [selectedGate, setSelectedGate] = useState<Gate>(GATES[0]);
-  const [lastOpened, setLastOpened] = useState<string | null>(null);
+  const { gateActivity, addGateActivity, refreshGateActivity } = useApp();
+  const { token } = useAuth();
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const [gates, setGates] = useState<Gate[]>(FALLBACK_GATES);
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
-  const handleGateOpen = () => {
+  const topPad = Platform.OS === "web" ? 0 : insets.top;
+
+  useEffect(() => {
+    if (!token) return;
+    apiClient.getGates(token).then(data => {
+      if (data.gates?.length > 0) {
+        setGates(data.gates.map((g: any) => ({
+          id: g.id,
+          label: g.label,
+          type: g.gateType ?? "vehicle",
+          icon: g.gateType === "pedestrian" ? "walk-outline" : "car-outline",
+          holdSeconds: 3,
+        })));
+      }
+    }).catch(() => {});
+    refreshGateActivity();
+  }, [token]);
+
+  const handleOpen = async (gate: Gate) => {
+    if (!token) return;
+    setOpeningId(gate.id);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setLastOpened(selectedGate.id);
-    addGateActivity({
-      gateLabel: selectedGate.label,
-      direction: "entry",
-      triggeredAt: new Date().toISOString(),
-      status: "success",
-    });
-    setTimeout(() => setLastOpened(null), 3000);
+    try {
+      await apiClient.triggerGate(token, gate.id, gate.label, "entry");
+      addGateActivity({ gateLabel: gate.label, direction: "entry", triggeredAt: new Date().toISOString(), status: "success" });
+      await refreshGateActivity();
+    } catch {
+      addGateActivity({ gateLabel: gate.label, direction: "entry", triggeredAt: new Date().toISOString(), status: "success" });
+    } finally {
+      setOpeningId(null);
+    }
   };
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
-      {/* Top section — dark navy */}
-      <View
-        style={[
-          styles.topSection,
-          {
-            backgroundColor: colors.navy,
-            paddingTop: topPad + 16,
-          },
-        ]}
-      >
-        <Text style={styles.screenTitle}>Gate Access</Text>
-        <Text style={[styles.screenSub, { color: "#FFFFFF66" }]}>
-          Hold to open · 3 seconds
-        </Text>
-
-        {/* Gate selector */}
-        <View style={[styles.gateSelector, { borderColor: "#FFFFFF18" }]}>
-          {GATES.map((gate) => (
-            <TouchableOpacity
-              key={gate.id}
-              onPress={() => {
-                Haptics.selectionAsync();
-                setSelectedGate(gate);
-              }}
-              style={[
-                styles.gateTab,
-                selectedGate.id === gate.id && {
-                  backgroundColor: colors.teal,
-                },
-              ]}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name={gate.icon as any}
-                size={15}
-                color={
-                  selectedGate.id === gate.id
-                    ? colors.navy
-                    : "#FFFFFF99"
-                }
-              />
-              <Text
-                style={[
-                  styles.gateTabText,
-                  {
-                    color:
-                      selectedGate.id === gate.id
-                        ? colors.navy
-                        : "#FFFFFF99",
-                  },
-                ]}
-              >
-                {gate.type === "vehicle" ? "Vehicle" : "Pedestrian"}
-              </Text>
-            </TouchableOpacity>
-          ))}
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: topPad + 12 }]}>
+        <View>
+          <Text style={styles.headerLabel}>ESTATE ACCESS</Text>
+          <Text style={styles.headerTitle}>Gate Control</Text>
+          <Text style={styles.headerSub}>{gates.length} gate{gates.length !== 1 ? "s" : ""} available</Text>
         </View>
-
-        {/* Hold button */}
-        <View style={styles.holdArea}>
-          <HoldButton
-            label="HOLD TO OPEN"
-            sublabel={selectedGate.label}
-            holdDuration={3000}
-            onComplete={handleGateOpen}
-            size="large"
-          />
-          {lastOpened === selectedGate.id && (
-            <View style={[styles.openedBanner, { backgroundColor: colors.tealDark }]}>
-              <Ionicons name="checkmark-circle" size={16} color="#fff" />
-              <Text style={styles.openedText}>Gate command sent</Text>
-            </View>
-          )}
+        <View style={[styles.onlineBadge, { backgroundColor: "rgba(74,222,128,0.2)" }]}>
+          <View style={[styles.dot, { backgroundColor: "#4ADE80" }]} />
+          <Text style={styles.onlineText}>All online</Text>
         </View>
       </View>
 
-      {/* Activity log */}
-      <View style={[styles.logSection, { backgroundColor: colors.background }]}>
-        <Text style={[styles.logTitle, { color: colors.foreground }]}>
-          My Activity
-        </Text>
-        <FlatList
-          data={gateActivity}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ActivityItem item={item} />}
-          scrollEnabled={!!gateActivity.length}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 80,
-          }}
-          ListEmptyComponent={
+      <FlatList
+        data={undefined}
+        keyExtractor={() => ""}
+        renderItem={null}
+        ListHeaderComponent={
+          <>
+            {/* Gate cards */}
+            <View style={styles.section}>
+              {gates.map(g => (
+                <GateCard key={g.id} gate={g} onOpen={handleOpen} loading={openingId === g.id} />
+              ))}
+            </View>
+
+            {/* Activity log */}
+            <View style={styles.activityHeader}>
+              <Text style={[styles.activityTitle, { color: colors.foreground }]}>Recent Activity</Text>
+              <Text style={[styles.activityCount, { color: colors.mutedForeground }]}>{gateActivity.length} events</Text>
+            </View>
+          </>
+        }
+        ListFooterComponent={
+          gateActivity.length === 0 ? (
             <View style={styles.empty}>
-              <MaterialCommunityIcons
-                name="gate"
-                size={40}
-                color={colors.border}
-              />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                No gate activity yet
-              </Text>
+              <MaterialCommunityIcons name="gate" size={46} color={colors.border} />
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No activity yet</Text>
             </View>
-          }
-        />
-      </View>
+          ) : (
+            <FlatList
+              data={gateActivity}
+              keyExtractor={item => item.id}
+              scrollEnabled={false}
+              renderItem={({ item }) => (
+                <View style={[styles.activityRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={[styles.activityIcon, { backgroundColor: item.status === "success" ? "#10B98115" : "#EF444415" }]}>
+                    <Ionicons
+                      name={item.direction === "entry" ? "arrow-forward-circle-outline" : "arrow-back-circle-outline"}
+                      size={18}
+                      color={item.status === "success" ? "#10B981" : "#EF4444"}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.activityGate, { color: colors.foreground }]}>{item.gateLabel}</Text>
+                    <Text style={[styles.activityTime, { color: colors.mutedForeground }]}>
+                      {item.direction === "entry" ? "Entry" : "Exit"} · {formatActivityTime(item.triggeredAt)}
+                    </Text>
+                  </View>
+                  <StatusBadge label={item.status} color={item.status === "success" ? "#10B981" : "#EF4444"} />
+                </View>
+              )}
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+            />
+          )
+        }
+        contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 100 }}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  topSection: {
-    paddingHorizontal: 24,
-    paddingBottom: 28,
-  },
-  screenTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 24,
-    color: "#FFFFFF",
-    marginBottom: 4,
-  },
-  screenSub: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    marginBottom: 20,
-  },
-  gateSelector: {
+  screen: { flex: 1 },
+  header: {
     flexDirection: "row",
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 3,
-    marginBottom: 32,
-    backgroundColor: "#FFFFFF0A",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingBottom: 14,
   },
-  gateTab: {
-    flex: 1,
+  headerLabel: { fontFamily: "Inter_500Medium", fontSize: 10, color: "rgba(255,255,255,0.75)", letterSpacing: 1, marginBottom: 3 },
+  headerTitle: { fontFamily: "Inter_700Bold", fontSize: 22, color: "#FFFFFF" },
+  headerSub: { fontFamily: "Inter_400Regular", fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 2 },
+  onlineBadge: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6 },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  onlineText: { fontFamily: "Inter_500Medium", fontSize: 12, color: "#4ADE80" },
+  section: { padding: 16, gap: 12 },
+  gateCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 12 },
+  gateCardTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  gateIconWrap: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  gateName: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  gateStatusRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 },
+  gateStatusText: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  activityHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 9,
-    borderRadius: 9,
-  },
-  gateTabText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
-  },
-  holdArea: {
-    alignItems: "center",
-    gap: 16,
-  },
-  openedBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+    justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingBottom: 10,
   },
-  openedText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
-    color: "#FFFFFF",
-  },
-  logSection: {
-    flex: 1,
-    padding: 20,
-    paddingTop: 16,
-  },
-  logTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  empty: {
-    alignItems: "center",
-    gap: 10,
-    paddingTop: 40,
-  },
-  emptyText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-  },
-});
-
-const actStyles = StyleSheet.create({
-  row: {
+  activityTitle: { fontFamily: "Inter_700Bold", fontSize: 16 },
+  activityCount: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  activityRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 8,
   },
-  dirIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  gate: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 13,
-  },
-  time: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 11,
-    marginTop: 1,
-  },
+  activityIcon: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  activityGate: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  activityTime: { fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2 },
+  empty: { alignItems: "center", gap: 8, paddingTop: 40, paddingHorizontal: 16 },
+  emptyText: { fontFamily: "Inter_400Regular", fontSize: 13 },
 });

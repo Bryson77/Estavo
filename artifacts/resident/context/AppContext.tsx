@@ -1,24 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-
-export interface ResidentProfile {
-  id: string;
-  firstName: string;
-  lastName: string;
-  unitNumber: string;
-  estateName: string;
-  estateAddress: string;
-  email: string;
-  phone: string;
-  accountStanding: "good" | "arrears";
-  avatarInitials: string;
-}
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { useAuth } from "./AuthContext";
+import { apiClient } from "../lib/api";
 
 export interface GuestCode {
   id: string;
@@ -27,6 +9,7 @@ export interface GuestCode {
   guestPhone: string;
   isParcel: boolean;
   pinCode: string;
+  qrPayload: string;
   validFrom: string;
   validUntil: string;
   usesRemaining: number;
@@ -53,253 +36,300 @@ export interface GateActivity {
   gateLabel: string;
   direction: "entry" | "exit";
   triggeredAt: string;
-  status: "success" | "failed";
+  status: "success" | "failed" | "cancelled";
+}
+
+export interface CommunityPost {
+  id: string;
+  content: string;
+  isAnonymous: boolean;
+  postType: string;
+  commentCount: number;
+  viewCount: number;
+  createdAt: string;
+}
+
+export interface CommunityEvent {
+  id: string;
+  title: string;
+  description?: string;
+  location?: string;
+  startsAt: string;
+  endsAt: string;
+  attendeeCount: number;
+  userRsvp: "yes" | "no" | "maybe" | null;
+  status: string;
+}
+
+export interface Amenity {
+  id: string;
+  name: string;
+  description?: string;
+  availableDays?: string[];
+  availableFrom?: string;
+  availableUntil?: string;
+  slotDurationMins: number;
+}
+
+export interface Contractor {
+  id: string;
+  name: string;
+  description?: string;
+  tradeCategories?: string[];
+  phone?: string;
+  whatsapp?: string;
+  rating?: number | null;
+  jobCount?: number;
+  avgResponseMins?: number;
+  isVerified?: boolean;
+}
+
+export interface ManagementBroadcast {
+  id: string;
+  subject?: string;
+  content: string;
+  messageType: string;
+  isRead: boolean;
+  createdAt: string;
 }
 
 interface AppContextValue {
-  profile: ResidentProfile;
   guestCodes: GuestCode[];
   reports: MaintenanceReport[];
   gateActivity: GateActivity[];
-  addGuestCode: (code: Omit<GuestCode, "id" | "createdAt">) => void;
-  deactivateGuestCode: (id: string) => void;
-  addReport: (report: Omit<MaintenanceReport, "id" | "ticketNumber" | "createdAt" | "updatedAt">) => void;
+  posts: CommunityPost[];
+  events: CommunityEvent[];
+  amenities: Amenity[];
+  contractors: Contractor[];
+  broadcasts: ManagementBroadcast[];
+  unreadBroadcasts: number;
+  guestStats: { activeCodes: number; maxActive: number; insideNow: number };
+  reportStats: { open: number; inProgress: number; resolved: number };
+  isLoading: boolean;
+  error: string | null;
+  refreshGuests: () => Promise<void>;
+  refreshReports: () => Promise<void>;
+  refreshGateActivity: () => Promise<void>;
+  refreshCommunity: () => Promise<void>;
+  refreshBroadcasts: () => Promise<void>;
+  addGuestCode: (data: {
+    guestFirstName: string;
+    guestLastName: string;
+    guestPhone?: string;
+    isParcel: boolean;
+    durationHours: number;
+  }) => Promise<GuestCode>;
+  deactivateGuestCode: (id: string) => Promise<void>;
+  addReport: (data: {
+    title: string;
+    description: string;
+    category: string;
+    priority: string;
+    photoUri?: string;
+  }) => Promise<MaintenanceReport>;
   addGateActivity: (activity: Omit<GateActivity, "id">) => void;
-  isLoaded: boolean;
+  createPost: (data: { content: string; postType: string; isAnonymous: boolean }) => Promise<void>;
+  rsvpEvent: (eventId: string, response: "yes" | "no" | "maybe") => Promise<void>;
+  triggerEmergency: () => Promise<{ emergencyRef: string; message: string }>;
+  markBroadcastRead: (id: string) => Promise<void>;
 }
-
-const defaultProfile: ResidentProfile = {
-  id: "resident-001",
-  firstName: "Thandi",
-  lastName: "Mthembu",
-  unitNumber: "136",
-  estateName: "Hillcrest Estate",
-  estateAddress: "136 Hillcrest Boulevard, Hillcrest, KZN",
-  email: "thandi.mthembu@email.com",
-  phone: "+27 82 555 0136",
-  accountStanding: "good",
-  avatarInitials: "TM",
-};
 
 const AppContext = createContext<AppContextValue | null>(null);
 
-const STORAGE_KEYS = {
-  GUESTS: "@estatehq_guests",
-  REPORTS: "@estatehq_reports",
-  GATE_ACTIVITY: "@estatehq_gate_activity",
-};
-
-function generateId(): string {
-  return Date.now().toString() + Math.random().toString(36).substr(2, 9);
-}
-
-function generatePin(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-function generateTicket(id: string): string {
-  return "TKT-" + id.substr(0, 8).toUpperCase();
-}
-
-const INITIAL_GUESTS: GuestCode[] = [
-  {
-    id: "g1",
-    guestFirstName: "Sarah",
-    guestLastName: "Thompson",
-    guestPhone: "+27 83 444 1122",
-    isParcel: false,
-    pinCode: "847261",
-    validFrom: new Date(Date.now() - 3600000).toISOString(),
-    validUntil: new Date(Date.now() + 18 * 3600000).toISOString(),
-    usesRemaining: 2,
-    usesTotal: 3,
-    isActive: true,
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: "g2",
-    guestFirstName: "Parcel",
-    guestLastName: "Delivery",
-    guestPhone: "",
-    isParcel: true,
-    pinCode: "332198",
-    validFrom: new Date(Date.now() - 7200000).toISOString(),
-    validUntil: new Date(Date.now() + 2 * 3600000).toISOString(),
-    usesRemaining: 1,
-    usesTotal: 1,
-    isActive: true,
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-  },
-];
-
-const INITIAL_REPORTS: MaintenanceReport[] = [
-  {
-    id: "r1",
-    ticketNumber: "TKT-R1000001",
-    title: "Streetlight on Block C not working",
-    description: "The streetlight near the entrance to Block C has been off for 3 days.",
-    category: "maintenance",
-    priority: "medium",
-    status: "in_progress",
-    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: "r2",
-    ticketNumber: "TKT-R1000002",
-    title: "Pool pump making strange noise",
-    description: "The main pool pump has been making a grinding noise since Saturday morning.",
-    category: "maintenance",
-    priority: "high",
-    status: "open",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
-
-const INITIAL_GATE_ACTIVITY: GateActivity[] = [
-  {
-    id: "ga1",
-    gateLabel: "Main Vehicle Gate",
-    direction: "entry",
-    triggeredAt: new Date(Date.now() - 1800000).toISOString(),
-    status: "success",
-  },
-  {
-    id: "ga2",
-    gateLabel: "Pedestrian Gate",
-    direction: "exit",
-    triggeredAt: new Date(Date.now() - 5400000).toISOString(),
-    status: "success",
-  },
-  {
-    id: "ga3",
-    gateLabel: "Main Vehicle Gate",
-    direction: "entry",
-    triggeredAt: new Date(Date.now() - 86400000).toISOString(),
-    status: "success",
-  },
-];
-
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [isLoaded, setIsLoaded] = useState(false);
+  const { token, user } = useAuth();
+
   const [guestCodes, setGuestCodes] = useState<GuestCode[]>([]);
   const [reports, setReports] = useState<MaintenanceReport[]>([]);
   const [gateActivity, setGateActivity] = useState<GateActivity[]>([]);
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [events, setEvents] = useState<CommunityEvent[]>([]);
+  const [amenities, setAmenities] = useState<Amenity[]>([]);
+  const [contractors, setContractors] = useState<Contractor[]>([]);
+  const [broadcasts, setBroadcasts] = useState<ManagementBroadcast[]>([]);
+  const [unreadBroadcasts, setUnreadBroadcasts] = useState(0);
+  const [guestStats, setGuestStats] = useState({ activeCodes: 0, maxActive: 10, insideNow: 0 });
+  const [reportStats, setReportStats] = useState({ open: 0, inProgress: 0, resolved: 0 });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refreshGuests = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await apiClient.getGuests(token);
+      setGuestCodes(data.codes ?? []);
+      setGuestStats({ activeCodes: data.activeCodes, maxActive: data.maxActive, insideNow: data.insideNow });
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }, [token]);
+
+  const refreshReports = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await apiClient.getReports(token);
+      setReports(data.reports ?? []);
+      setReportStats({ open: data.open, inProgress: data.inProgress, resolved: data.resolved });
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }, [token]);
+
+  const refreshGateActivity = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await apiClient.getGateActivity(token);
+      setGateActivity(data.logs ?? []);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }, [token]);
+
+  const refreshCommunity = useCallback(async () => {
+    if (!token) return;
+    try {
+      const [postsData, eventsData, amenitiesData, contractorsData] = await Promise.all([
+        apiClient.getCommunityPosts(token),
+        apiClient.getEvents(token),
+        apiClient.getAmenities(token),
+        apiClient.getContractors(token),
+      ]);
+      setPosts(postsData.posts ?? []);
+      setEvents(eventsData.events ?? []);
+      setAmenities(amenitiesData.amenities ?? []);
+      setContractors(contractorsData.contractors ?? []);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }, [token]);
+
+  const refreshBroadcasts = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await apiClient.getBroadcasts(token);
+      setBroadcasts(data.broadcasts ?? []);
+      setUnreadBroadcasts(data.unread ?? 0);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }, [token]);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [guestsRaw, reportsRaw, gateRaw] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEYS.GUESTS),
-          AsyncStorage.getItem(STORAGE_KEYS.REPORTS),
-          AsyncStorage.getItem(STORAGE_KEYS.GATE_ACTIVITY),
-        ]);
-        setGuestCodes(guestsRaw ? JSON.parse(guestsRaw) : INITIAL_GUESTS);
-        setReports(reportsRaw ? JSON.parse(reportsRaw) : INITIAL_REPORTS);
-        setGateActivity(gateRaw ? JSON.parse(gateRaw) : INITIAL_GATE_ACTIVITY);
-      } catch {
-        setGuestCodes(INITIAL_GUESTS);
-        setReports(INITIAL_REPORTS);
-        setGateActivity(INITIAL_GATE_ACTIVITY);
-      } finally {
-        setIsLoaded(true);
-      }
-    }
-    load();
+    if (!token) return;
+    setIsLoading(true);
+    Promise.all([
+      refreshGuests(),
+      refreshReports(),
+      refreshGateActivity(),
+      refreshCommunity(),
+      refreshBroadcasts(),
+    ]).finally(() => setIsLoading(false));
+  }, [token]);
+
+  const addGuestCode = useCallback(async (data: {
+    guestFirstName: string;
+    guestLastName: string;
+    guestPhone?: string;
+    isParcel: boolean;
+    durationHours: number;
+  }): Promise<GuestCode> => {
+    if (!token) throw new Error("Not authenticated");
+    const result = await apiClient.createGuest(token, data);
+    await refreshGuests();
+    return result.code;
+  }, [token, refreshGuests]);
+
+  const deactivateGuestCode = useCallback(async (id: string) => {
+    if (!token) throw new Error("Not authenticated");
+    await apiClient.deactivateGuest(token, id);
+    await refreshGuests();
+  }, [token, refreshGuests]);
+
+  const addReport = useCallback(async (data: {
+    title: string;
+    description: string;
+    category: string;
+    priority: string;
+    photoUri?: string;
+  }): Promise<MaintenanceReport> => {
+    if (!token) throw new Error("Not authenticated");
+    const result = await apiClient.createReport(token, {
+      title: data.title,
+      description: data.description,
+      category: data.category,
+      priority: data.priority,
+      photoUrl: data.photoUri,
+    });
+    await refreshReports();
+    return result.report;
+  }, [token, refreshReports]);
+
+  const addGateActivity = useCallback((activity: Omit<GateActivity, "id">) => {
+    const newActivity: GateActivity = { ...activity, id: Date.now().toString() };
+    setGateActivity(prev => [newActivity, ...prev].slice(0, 50));
   }, []);
 
-  const persistGuests = useCallback(async (updated: GuestCode[]) => {
-    await AsyncStorage.setItem(STORAGE_KEYS.GUESTS, JSON.stringify(updated));
-  }, []);
+  const createPost = useCallback(async (data: { content: string; postType: string; isAnonymous: boolean }) => {
+    if (!token) throw new Error("Not authenticated");
+    await apiClient.createPost(token, data);
+    await refreshCommunity();
+  }, [token, refreshCommunity]);
 
-  const persistReports = useCallback(async (updated: MaintenanceReport[]) => {
-    await AsyncStorage.setItem(STORAGE_KEYS.REPORTS, JSON.stringify(updated));
-  }, []);
+  const rsvpEvent = useCallback(async (eventId: string, response: "yes" | "no" | "maybe") => {
+    if (!token) throw new Error("Not authenticated");
+    await apiClient.rsvpEvent(token, eventId, response);
+    setEvents(prev => prev.map(e =>
+      e.id === eventId ? {
+        ...e,
+        userRsvp: response,
+        attendeeCount: response === "yes" ? e.attendeeCount + (e.userRsvp !== "yes" ? 1 : 0)
+          : e.attendeeCount - (e.userRsvp === "yes" ? 1 : 0),
+      } : e
+    ));
+  }, [token]);
 
-  const persistGate = useCallback(async (updated: GateActivity[]) => {
-    await AsyncStorage.setItem(STORAGE_KEYS.GATE_ACTIVITY, JSON.stringify(updated));
-  }, []);
+  const triggerEmergency = useCallback(async () => {
+    if (!token) throw new Error("Not authenticated");
+    const result = await apiClient.triggerEmergency(token);
+    return { emergencyRef: result.emergencyRef, message: result.message };
+  }, [token]);
 
-  const addGuestCode = useCallback(
-    (code: Omit<GuestCode, "id" | "createdAt">) => {
-      const newCode: GuestCode = {
-        ...code,
-        id: generateId(),
-        pinCode: code.pinCode || generatePin(),
-        createdAt: new Date().toISOString(),
-      };
-      setGuestCodes((prev) => {
-        const updated = [newCode, ...prev];
-        persistGuests(updated);
-        return updated;
-      });
-    },
-    [persistGuests]
-  );
-
-  const deactivateGuestCode = useCallback(
-    (id: string) => {
-      setGuestCodes((prev) => {
-        const updated = prev.map((c) =>
-          c.id === id ? { ...c, isActive: false } : c
-        );
-        persistGuests(updated);
-        return updated;
-      });
-    },
-    [persistGuests]
-  );
-
-  const addReport = useCallback(
-    (report: Omit<MaintenanceReport, "id" | "ticketNumber" | "createdAt" | "updatedAt">) => {
-      const id = generateId();
-      const newReport: MaintenanceReport = {
-        ...report,
-        id,
-        ticketNumber: generateTicket(id),
-        status: "open",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setReports((prev) => {
-        const updated = [newReport, ...prev];
-        persistReports(updated);
-        return updated;
-      });
-    },
-    [persistReports]
-  );
-
-  const addGateActivity = useCallback(
-    (activity: Omit<GateActivity, "id">) => {
-      const newActivity: GateActivity = {
-        ...activity,
-        id: generateId(),
-      };
-      setGateActivity((prev) => {
-        const updated = [newActivity, ...prev].slice(0, 50);
-        persistGate(updated);
-        return updated;
-      });
-    },
-    [persistGate]
-  );
+  const markBroadcastRead = useCallback(async (id: string) => {
+    if (!token) return;
+    await apiClient.markBroadcastRead(token, id);
+    setBroadcasts(prev => prev.map(b => b.id === id ? { ...b, isRead: true } : b));
+    setUnreadBroadcasts(prev => Math.max(0, prev - 1));
+  }, [token]);
 
   return (
-    <AppContext.Provider
-      value={{
-        profile: defaultProfile,
-        guestCodes,
-        reports,
-        gateActivity,
-        addGuestCode,
-        deactivateGuestCode,
-        addReport,
-        addGateActivity,
-        isLoaded,
-      }}
-    >
+    <AppContext.Provider value={{
+      guestCodes,
+      reports,
+      gateActivity,
+      posts,
+      events,
+      amenities,
+      contractors,
+      broadcasts,
+      unreadBroadcasts,
+      guestStats,
+      reportStats,
+      isLoading,
+      error,
+      refreshGuests,
+      refreshReports,
+      refreshGateActivity,
+      refreshCommunity,
+      refreshBroadcasts,
+      addGuestCode,
+      deactivateGuestCode,
+      addReport,
+      addGateActivity,
+      createPost,
+      rsvpEvent,
+      triggerEmergency,
+      markBroadcastRead,
+    }}>
       {children}
     </AppContext.Provider>
   );

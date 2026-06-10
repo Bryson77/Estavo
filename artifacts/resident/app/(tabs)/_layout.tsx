@@ -119,6 +119,8 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen name="gate" options={{ href: null }} />
+      <Tabs.Screen name="emergency" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }

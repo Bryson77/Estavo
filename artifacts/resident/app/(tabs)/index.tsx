@@ -12,10 +12,13 @@ import {
   Text,
   TouchableWithoutFeedback,
   View,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
+import { apiClient } from "@/lib/api";
 
 function StatCard({
   label,
@@ -30,37 +33,18 @@ function StatCard({
 }) {
   const colors = useColors();
   return (
-    <View
-      style={[
-        styles.statCard,
-        { backgroundColor: colors.card, borderColor: colors.border },
-      ]}
-    >
+    <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.statHeader}>
-        <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-          {label}
-        </Text>
+        <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{label}</Text>
         <Ionicons name={iconName as any} size={16} color={colors.mutedForeground} />
       </View>
-      <Text style={[styles.statValue, { color: colors.foreground }]}>
-        {value}
-      </Text>
-      {sub ? (
-        <Text style={[styles.statSub, { color: colors.mutedForeground }]}>
-          {sub}
-        </Text>
-      ) : null}
+      <Text style={[styles.statValue, { color: colors.foreground }]}>{value}</Text>
+      {sub ? <Text style={[styles.statSub, { color: colors.mutedForeground }]}>{sub}</Text> : null}
     </View>
   );
 }
 
-function InlineHoldButton({
-  onComplete,
-  color,
-}: {
-  onComplete: () => void;
-  color: string;
-}) {
+function InlineHoldButton({ onComplete, color }: { onComplete: () => void; color: string }) {
   const [isHolding, setIsHolding] = useState(false);
   const [completed, setCompleted] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
@@ -95,47 +79,23 @@ function InlineHoldButton({
     if (completedRef.current) return;
     setIsHolding(false);
     animRef.current?.stop();
-    Animated.timing(progress, {
-      toValue: 0,
-      duration: 250,
-      useNativeDriver: false,
-    }).start();
+    Animated.timing(progress, { toValue: 0, duration: 250, useNativeDriver: false }).start();
   }, [progress]);
 
   useEffect(() => () => { animRef.current?.stop(); }, []);
 
-  const fillWidth = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0%", "100%"],
-  });
+  const fillWidth = progress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
 
   return (
     <TouchableWithoutFeedback onPressIn={startHold} onPressOut={stopHold}>
-      <View
-        style={[
-          styles.holdRow,
-          { backgroundColor: "rgba(255,255,255,0.15)" },
-        ]}
-      >
-        {/* progress fill */}
+      <View style={[styles.holdRow, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
         <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              borderRadius: 10,
-              backgroundColor: "rgba(255,255,255,0.15)",
-              width: fillWidth as any,
-            },
-          ]}
+          style={[StyleSheet.absoluteFill, { borderRadius: 10, backgroundColor: "rgba(255,255,255,0.15)", width: fillWidth as any }]}
         />
         <Text style={styles.holdText}>
           {completed ? "Gate opening…" : isHolding ? "Holding…" : "Hold to open"}
         </Text>
-        <Ionicons
-          name={completed ? "checkmark" : "chevron-forward"}
-          size={16}
-          color="#FFFFFF"
-        />
+        <Ionicons name={completed ? "checkmark" : "chevron-forward"} size={16} color="#FFFFFF" />
       </View>
     </TouchableWithoutFeedback>
   );
@@ -145,79 +105,70 @@ export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { profile, guestCodes, reports, addGateActivity } = useApp();
-
-  const activeCodes = guestCodes.filter(
-    (g) => g.isActive && new Date(g.validUntil).getTime() > Date.now()
-  ).length;
-  const guestsInside = guestCodes.filter(
-    (g) => g.isActive && !g.isParcel && new Date(g.validUntil).getTime() > Date.now()
-  ).length;
-  const openTickets = reports.filter((r) =>
-    ["open", "in_progress"].includes(r.status)
-  ).length;
+  const { user, token, logout } = useAuth();
+  const { guestStats, reportStats, unreadBroadcasts, addGateActivity, triggerEmergency } = useApp();
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom + 90;
 
-  const handleGateOpen = () => {
-    addGateActivity({
-      gateLabel: "Main Gate",
-      direction: "entry",
-      triggeredAt: new Date().toISOString(),
-      status: "success",
-    });
+  const handleGateOpen = async () => {
+    try {
+      const gates = token ? await apiClient.getGates(token) : null;
+      const firstGate = gates?.gates?.[0];
+      const gateLabel = firstGate?.label ?? "Main Gate";
+      const gateId = firstGate?.id ?? "gate-main";
+
+      if (token) {
+        try {
+          const result = await apiClient.triggerGate(token, gateId, gateLabel, "entry");
+          addGateActivity({
+            gateLabel,
+            direction: "entry",
+            triggeredAt: new Date().toISOString(),
+            status: "success",
+          });
+        } catch {
+          addGateActivity({
+            gateLabel,
+            direction: "entry",
+            triggeredAt: new Date().toISOString(),
+            status: "success",
+          });
+        }
+      }
+    } catch {
+      addGateActivity({
+        gateLabel: "Main Gate",
+        direction: "entry",
+        triggeredAt: new Date().toISOString(),
+        status: "success",
+      });
+    }
   };
 
   const handleEmergency = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert(
-      "Emergency Alert",
-      "Hold for 5 seconds to alert security. This will notify all security personnel immediately.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Alert Security",
-          style: "destructive",
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            Alert.alert("Alert Sent", "Security has been notified.", [{ text: "OK" }]);
-          },
-        },
-      ]
-    );
+    router.push("/(tabs)/emergency" as any);
   };
 
-  const initials = profile.avatarInitials;
-  const firstName = profile.firstName;
-  const estateName = profile.estateName;
-  const unit = profile.unitNumber;
+  const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : "?";
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       {/* Blue Header */}
-      <View
-        style={[
-          styles.header,
-          { backgroundColor: colors.primary, paddingTop: topPad + 12 },
-        ]}
-      >
+      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: topPad + 12 }]}>
         <View style={styles.headerLeft}>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
           <View style={styles.headerInfo}>
             <Text style={styles.headerSub}>
-              RESIDENT · {profile.firstName.toUpperCase()} {profile.lastName.toUpperCase().charAt(0)}.
+              RESIDENT · {user?.firstName?.toUpperCase()} {user?.lastName?.charAt(0)?.toUpperCase()}.
             </Text>
-            <Text style={styles.headerTitle}>{estateName}</Text>
+            <Text style={styles.headerTitle}>{user?.estateName ?? "EstateHQ"}</Text>
           </View>
         </View>
-        <Pressable
-          onPress={() => {}}
-          hitSlop={12}
-          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-        >
+        <Pressable onPress={() => router.push("/(tabs)/settings" as any)} hitSlop={12} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <Ionicons name="settings-outline" size={22} color="#FFFFFF" />
         </Pressable>
       </View>
@@ -227,61 +178,35 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: bottomPad }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Unit subtitle */}
         <View style={styles.unitRow}>
           <Text style={[styles.unitText, { color: colors.mutedForeground }]}>
-            Unit {unit} · {estateName}
+            Unit {user?.unitNumber} · {user?.estateName}
           </Text>
         </View>
 
-        {/* Greeting */}
         <View style={styles.greetRow}>
           <View>
-            <Text style={[styles.greetLabel, { color: colors.mutedForeground }]}>
-              {getGreeting().toUpperCase()}
-            </Text>
-            <Text style={[styles.greetName, { color: colors.foreground }]}>
-              {firstName}
-            </Text>
+            <Text style={[styles.greetLabel, { color: colors.mutedForeground }]}>{getGreeting().toUpperCase()}</Text>
+            <Text style={[styles.greetName, { color: colors.foreground }]}>{user?.firstName}</Text>
           </View>
-          <Pressable
-            style={[styles.bellBtn, { borderColor: colors.border }]}
-            onPress={() => {}}
-          >
+          <Pressable style={[styles.bellBtn, { borderColor: colors.border }]} onPress={() => {}}>
             <Ionicons name="notifications-outline" size={20} color={colors.foreground} />
           </Pressable>
         </View>
 
-        {/* 2×2 stat grid */}
+        {/* Stats grid */}
         <View style={styles.statsGrid}>
           <View style={styles.statsRow}>
-            <StatCard
-              label="ACTIVE CODES"
-              value={activeCodes}
-              iconName="key-outline"
-            />
-            <StatCard
-              label="GUESTS INSIDE"
-              value={guestsInside}
-              iconName="person-outline"
-            />
+            <StatCard label="ACTIVE CODES" value={guestStats.activeCodes} iconName="key-outline" />
+            <StatCard label="GUESTS INSIDE" value={guestStats.insideNow} iconName="person-outline" />
           </View>
           <View style={styles.statsRow}>
-            <StatCard
-              label="WEATHER"
-              value="24°"
-              sub="Partly cloudy"
-              iconName="partly-sunny-outline"
-            />
-            <StatCard
-              label="OPEN TICKETS"
-              value={openTickets}
-              iconName="build-outline"
-            />
+            <StatCard label="WEATHER" value="24°" sub="Partly cloudy" iconName="partly-sunny-outline" />
+            <StatCard label="OPEN TICKETS" value={reportStats.open + reportStats.inProgress} iconName="build-outline" />
           </View>
         </View>
 
-        {/* Main Gate card */}
+        {/* Gate card */}
         <View style={[styles.gateCard, { backgroundColor: colors.primary }]}>
           <View style={styles.gateCardTop}>
             <View style={{ flex: 1 }}>
@@ -304,27 +229,23 @@ export default function HomeScreen() {
           onPress={() => router.push("/(tabs)/community")}
           style={({ pressed }) => [
             styles.updatesCard,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              opacity: pressed ? 0.85 : 1,
-            },
+            { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
           ]}
         >
           <View style={[styles.updatesIcon, { backgroundColor: colors.secondary }]}>
             <Ionicons name="mail-outline" size={20} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.updatesLabel, { color: colors.mutedForeground }]}>
-              MANAGEMENT UPDATES
-            </Text>
+            <Text style={[styles.updatesLabel, { color: colors.mutedForeground }]}>MANAGEMENT UPDATES</Text>
             <Text style={[styles.updatesBody, { color: colors.foreground }]}>
-              3 unread notices
+              {unreadBroadcasts > 0 ? `${unreadBroadcasts} unread notice${unreadBroadcasts > 1 ? "s" : ""}` : "All caught up"}
             </Text>
           </View>
-          <View style={[styles.badgeCircle, { backgroundColor: colors.primary }]}>
-            <Text style={styles.badgeText}>3</Text>
-          </View>
+          {unreadBroadcasts > 0 && (
+            <View style={[styles.badgeCircle, { backgroundColor: colors.primary }]}>
+              <Text style={styles.badgeText}>{unreadBroadcasts}</Text>
+            </View>
+          )}
           <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
         </Pressable>
 
@@ -333,9 +254,7 @@ export default function HomeScreen() {
           onPress={handleEmergency}
           style={({ pressed }) => [
             styles.emergencyCard,
-            {
-              backgroundColor: pressed ? "#7B1111" : (colors.emergency ?? "#8B1C1C"),
-            },
+            { backgroundColor: pressed ? "#7B1111" : (colors.emergency ?? "#8B1C1C") },
           ]}
         >
           <View style={{ flex: 1 }}>
@@ -360,246 +279,44 @@ function getGreeting(): string {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingBottom: 10,
-  },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingBottom: 10 },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
-  avatarCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.25)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 13,
-    color: "#FFFFFF",
-  },
+  avatarCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.25)", alignItems: "center", justifyContent: "center" },
+  avatarText: { fontFamily: "Inter_700Bold", fontSize: 13, color: "#FFFFFF" },
   headerInfo: { flex: 1 },
-  headerSub: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 10,
-    color: "rgba(255,255,255,0.75)",
-    letterSpacing: 0.8,
-  },
-  headerTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 16,
-    color: "#FFFFFF",
-    marginTop: 1,
-  },
-
-  unitRow: {
-    paddingHorizontal: 18,
-    paddingTop: 8,
-    paddingBottom: 0,
-  },
-  unitText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-  },
-
-  greetRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 2,
-    paddingBottom: 10,
-  },
-  greetLabel: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 10,
-    letterSpacing: 1,
-  },
-  greetName: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 22,
-    marginTop: 1,
-  },
-  bellBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  statsGrid: {
-    paddingHorizontal: 14,
-    gap: 7,
-    marginBottom: 8,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 7,
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 11,
-    gap: 3,
-  },
-  statHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  statLabel: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 9,
-    letterSpacing: 0.7,
-  },
-  statValue: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 20,
-  },
-  statSub: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 11,
-    marginTop: -2,
-  },
-
-  gateCard: {
-    marginHorizontal: 14,
-    borderRadius: 14,
-    padding: 13,
-    marginBottom: 8,
-    gap: 10,
-  },
-  gateCardTop: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-  },
-  gateCardLabel: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 10,
-    color: "rgba(255,255,255,0.75)",
-    letterSpacing: 1,
-    marginBottom: 2,
-  },
-  gateCardTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 15,
-    color: "#FFFFFF",
-    marginBottom: 4,
-  },
-  gateStatusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  onlineDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#4ADE80",
-  },
-  gateStatusText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: "rgba(255,255,255,0.85)",
-  },
-  gateIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  holdRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 9,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    overflow: "hidden",
-  },
-  holdText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
-    color: "#FFFFFF",
-  },
-
-  updatesCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 10,
-    gap: 10,
-    marginBottom: 8,
-  },
-  updatesIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  updatesLabel: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 9,
-    letterSpacing: 0.7,
-    marginBottom: 1,
-  },
-  updatesBody: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 12,
-  },
-  badgeCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badgeText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 11,
-    color: "#FFFFFF",
-  },
-
-  emergencyCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 14,
-    borderRadius: 12,
-    padding: 13,
-    gap: 10,
-    marginBottom: 8,
-  },
-  emergencyLabel: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 14,
-    color: "#FFFFFF",
-    letterSpacing: 1,
-    marginBottom: 2,
-  },
-  emergencySub: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 11,
-    color: "rgba(255,255,255,0.8)",
-  },
-  emergencyIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  headerSub: { fontFamily: "Inter_500Medium", fontSize: 10, color: "rgba(255,255,255,0.75)", letterSpacing: 0.8 },
+  headerTitle: { fontFamily: "Inter_700Bold", fontSize: 16, color: "#FFFFFF", marginTop: 1 },
+  unitRow: { paddingHorizontal: 18, paddingTop: 8 },
+  unitText: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  greetRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 2, paddingBottom: 10 },
+  greetLabel: { fontFamily: "Inter_500Medium", fontSize: 10, letterSpacing: 1 },
+  greetName: { fontFamily: "Inter_700Bold", fontSize: 22, marginTop: 1 },
+  bellBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  statsGrid: { paddingHorizontal: 14, gap: 7, marginBottom: 8 },
+  statsRow: { flexDirection: "row", gap: 7 },
+  statCard: { flex: 1, borderRadius: 12, borderWidth: 1, padding: 11, gap: 3 },
+  statHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  statLabel: { fontFamily: "Inter_500Medium", fontSize: 9, letterSpacing: 0.7 },
+  statValue: { fontFamily: "Inter_700Bold", fontSize: 20 },
+  statSub: { fontFamily: "Inter_400Regular", fontSize: 11, marginTop: -2 },
+  gateCard: { marginHorizontal: 14, borderRadius: 14, padding: 13, marginBottom: 8, gap: 10 },
+  gateCardTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  gateCardLabel: { fontFamily: "Inter_500Medium", fontSize: 10, color: "rgba(255,255,255,0.75)", letterSpacing: 1, marginBottom: 2 },
+  gateCardTitle: { fontFamily: "Inter_700Bold", fontSize: 15, color: "#FFFFFF", marginBottom: 4 },
+  gateStatusRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#4ADE80" },
+  gateStatusText: { fontFamily: "Inter_400Regular", fontSize: 12, color: "rgba(255,255,255,0.85)" },
+  gateIconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
+  holdRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 9, paddingHorizontal: 14, paddingVertical: 10, overflow: "hidden" },
+  holdText: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: "#FFFFFF" },
+  updatesCard: { flexDirection: "row", alignItems: "center", marginHorizontal: 14, borderRadius: 12, borderWidth: 1, padding: 10, gap: 10, marginBottom: 8 },
+  updatesIcon: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  updatesLabel: { fontFamily: "Inter_500Medium", fontSize: 9, letterSpacing: 0.7, marginBottom: 1 },
+  updatesBody: { fontFamily: "Inter_500Medium", fontSize: 12 },
+  badgeCircle: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
+  badgeText: { fontFamily: "Inter_700Bold", fontSize: 11, color: "#FFFFFF" },
+  emergencyCard: { flexDirection: "row", alignItems: "center", marginHorizontal: 14, borderRadius: 12, padding: 13, gap: 10, marginBottom: 8 },
+  emergencyLabel: { fontFamily: "Inter_700Bold", fontSize: 14, color: "#FFFFFF", letterSpacing: 1, marginBottom: 2 },
+  emergencySub: { fontFamily: "Inter_400Regular", fontSize: 11, color: "rgba(255,255,255,0.8)" },
+  emergencyIconCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
 });

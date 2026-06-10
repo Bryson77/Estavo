@@ -1,0 +1,1018 @@
+EstateHQ — Backend PRD
+Version: 3.0 | Status: Build Ready | June 2026
+
+TABLE OF CONTENTS
+Architecture Overview
+Folder Structure
+Tech Stack
+Estate Isolation — How It Works
+Database Schema (Full Production)
+Row-Level Security Policies
+Auth System
+Edge Functions
+Gate Hardware Integration
+Notification System
+File Storage
+Realtime Subscriptions
+Rate Limiting
+Audit Logging
+POPIA & Data Compliance
+Security Hardening (Full)
+Error Taxonomy
+CI/CD & Deployment
+1. ARCHITECTURE OVERVIEW
+EstateHQ operates on a dual-database architecture. Two completely separate Supabase projects. No shared tables. No shared auth. No shared connections.
+
+┌─────────────────────────────────────────────────────────┐
+│  ESTATEHQ-APP (Supabase Project 1 — EU West Frankfurt)  │
+│                                                         │
+│  All estate operational data                            │
+│  Residents, staff, managers, trustees                   │
+│  Gate logs, guest codes, emergency alerts               │
+│  Maintenance reports, tasks, shifts                     │
+│  Community posts, events, amenity bookings              │
+│  Approval requests, documents, meetings                 │
+│  Performance snapshots, contractors                     │
+│                                                         │
+│  RLS enforced on every table                            │
+│  estate_id on every row                                 │
+│  Realtime scoped to estate_id                           │
+└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  ESTATEHQ-OPS (Supabase Project 2 — EU West Frankfurt)  │
+│                                                         │
+│  Internal operations only                               │
+│  Superadmin user accounts                               │
+│  Leads (intake form submissions)                        │
+│  Audit logs (all admin actions — immutable)             │
+│  System health and failure logs                         │
+│  Onboarding progress records                            │
+└─────────────────────────────────────────────────────────┘
+
+Why two projects:
+If estatehq-app is ever compromised, the internal audit trail and operator data in estatehq-ops is untouched on a completely separate project with separate credentials. Support staff access estatehq-ops without ever touching production estate data unless explicitly granted.
+
+The service role key for estatehq-app lives exclusively in estatehq-ops server-side Next.js functions. It is never in a browser, never in a mobile app, never in an environment variable that a client can read.
+
+2. FOLDER STRUCTURE
+estatehq/                               ← Turborepo monorepo root
+│
+├── apps/
+│   ├── resident/                       ← React Native (Expo) — iOS + Android
+│   │   ├── app/                        ← Expo Router file-based routing
+│   │   │   ├── (auth)/                 ← Auth screens (magic link, password setup)
+│   │   │   ├── (tabs)/                 ← Main tab navigation
+│   │   │   │   ├── home.tsx
+│   │   │   │   ├── gate.tsx
+│   │   │   │   ├── guests.tsx
+│   │   │   │   └── reports.tsx
+│   │   │   └── _layout.tsx
+│   │   ├── components/                 ← Screen-specific components
+│   │   ├── hooks/                      ← Custom hooks (useGate, useGuests, etc.)
+│   │   ├── stores/                     ← Zustand stores (auth, gate, guests)
+│   │   └── app.config.ts
+│   │
+│   ├── security/                       ← React Native (Expo) — same structure as resident
+│   │   ├── app/
+│   │   │   ├── (auth)/
+│   │   │   ├── (tabs)/
+│   │   │   │   ├── home.tsx
+│   │   │   │   ├── gates.tsx
+│   │   │   │   ├── alerts.tsx
+│   │   │   │   └── logs.tsx
+│   │   │   └── _layout.tsx
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   └── stores/
+│   │
+│   ├── staff/                          ← React Native (Expo)
+│   │   ├── app/
+│   │   │   ├── (auth)/
+│   │   │   ├── (tabs)/
+│   │   │   │   ├── home.tsx
+│   │   │   │   ├── reports.tsx
+│   │   │   │   ├── tasks.tsx
+│   │   │   │   └── weekly.tsx
+│   │   │   └── _layout.tsx
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   └── stores/
+│   │
+│   ├── management/                     ← Next.js 14 (App Router)
+│   │   ├── app/
+│   │   │   ├── (auth)/
+│   │   │   │   └── login/
+│   │   │   ├── (dashboard)/            ← Protected routes
+│   │   │   │   ├── dashboard/
+│   │   │   │   ├── residents/
+│   │   │   │   ├── staff/
+│   │   │   │   ├── reports/
+│   │   │   │   ├── alerts/
+│   │   │   │   ├── gate-logs/
+│   │   │   │   ├── community/
+│   │   │   │   ├── tasks/
+│   │   │   │   ├── amenities/
+│   │   │   │   ├── contractors/
+│   │   │   │   ├── approvals/
+│   │   │   │   ├── billing/
+│   │   │   │   └── settings/
+│   │   │   ├── trustees/               ← Trustee Portal (same Next.js app, separate route group)
+│   │   │   │   ├── approvals/
+│   │   │   │   ├── overview/
+│   │   │   │   ├── meetings/
+│   │   │   │   └── documents/
+│   │   │   └── layout.tsx
+│   │   ├── components/
+│   │   │   ├── ui/                     ← shadcn/ui components
+│   │   │   ├── charts/                 ← Recharts wrappers
+│   │   │   ├── tables/                 ← Table components per entity
+│   │   │   └── slideoverpanels/        ← All slide-over panels
+│   │   ├── lib/
+│   │   │   ├── supabase/               ← Supabase client (server + client)
+│   │   │   └── stripe/                 ← Stripe helpers
+│   │   └── middleware.ts               ← Route protection + role enforcement
+│   │
+│   ├── corporate/                      ← Next.js 14 — corporate.estatehq.co.za
+│   │   ├── app/
+│   │   │   ├── (auth)/
+│   │   │   └── (dashboard)/
+│   │   │       ├── portfolio/
+│   │   │       ├── analytics/
+│   │   │       ├── financials/
+│   │   │       ├── compliance/
+│   │   │       └── managers/
+│   │   ├── components/
+│   │   └── middleware.ts
+│   │
+│   └── superadmin/                     ← Next.js 14 — ops.estatehq.co.za
+│       ├── app/
+│       │   ├── (auth)/
+│       │   └── (ops)/
+│       │       ├── overview/
+│       │       ├── estates/
+│       │       ├── residents/
+│       │       ├── config/
+│       │       ├── reports/
+│       │       ├── leads/
+│       │       ├── billing/
+│       │       ├── business/
+│       │       └── team/
+│       ├── components/
+│       └── middleware.ts
+│
+├── packages/
+│   ├── supabase/                       ← Shared Supabase utilities
+│   │   ├── src/
+│   │   │   ├── client.ts               ← createBrowserClient + createServerClient
+│   │   │   ├── types.ts                ← Auto-generated from Supabase schema
+│   │   │   ├── queries/                ← Shared query functions
+│   │   │   │   ├── residents.ts
+│   │   │   │   ├── gates.ts
+│   │   │   │   ├── reports.ts
+│   │   │   │   └── ...
+│   │   │   └── helpers/
+│   │   │       ├── rls.ts              ← RLS testing utilities
+│   │   │       └── pagination.ts       ← Cursor-based pagination helpers
+│   │   └── package.json
+│   │
+│   ├── ui/                             ← Shared design tokens + components
+│   │   ├── src/
+│   │   │   ├── tokens/
+│   │   │   │   ├── colours.ts
+│   │   │   │   ├── typography.ts
+│   │   │   │   └── spacing.ts
+│   │   │   ├── components/
+│   │   │   │   ├── HoldButton.tsx      ← Gate open hold button
+│   │   │   │   ├── StatusBadge.tsx
+│   │   │   │   ├── MonoLabel.tsx
+│   │   │   │   ├── SkeletonBlock.tsx
+│   │   │   │   ├── AuditNote.tsx       ← "✓ Logged" microcopy
+│   │   │   │   ├── GateStatusDot.tsx
+│   │   │   │   └── EmergencyCard.tsx
+│   │   │   └── index.ts
+│   │   └── package.json
+│   │
+│   ├── utils/                          ← Shared utilities
+│   │   ├── src/
+│   │   │   ├── dates.ts                ← SA date/time formatting (Africa/Johannesburg)
+│   │   │   ├── validation.ts           ← Zod schemas for all entities
+│   │   │   ├── errors.ts               ← Error type taxonomy
+│   │   │   ├── csv.ts                  ← CSV/XLSX parsing (BOM strip, Windows line endings)
+│   │   │   └── constants.ts
+│   │   └── package.json
+│   │
+│   └── config/                         ← Shared configuration
+│       ├── eslint.js
+│       ├── tsconfig.json               ← TypeScript strict base
+│       ├── tailwind.js                 ← Shared Tailwind config + design tokens
+│       └── package.json
+│
+├── supabase/                           ← Supabase local dev + migrations
+│   ├── migrations/                     ← All schema migrations in order
+│   │   ├── 0001_initial_schema.sql
+│   │   ├── 0002_rls_policies.sql
+│   │   ├── 0003_governance_tables.sql
+│   │   └── ...
+│   ├── functions/                      ← All Edge Functions
+│   │   ├── trigger-gate/
+│   │   │   └── index.ts
+│   │   ├── send-guest-code-whatsapp/
+│   │   │   └── index.ts
+│   │   ├── expire-guest-codes/
+│   │   │   └── index.ts
+│   │   ├── escalate-reports/
+│   │   │   └── index.ts
+│   │   ├── send-push-notification/
+│   │   │   └── index.ts
+│   │   ├── classify-report/
+│   │   │   └── index.ts
+│   │   ├── generate-approval-summary/
+│   │   │   └── index.ts
+│   │   ├── cast-approval-vote/
+│   │   │   └── index.ts
+│   │   ├── compute-estate-performance/
+│   │   │   └── index.ts
+│   │   ├── stripe-webhook/
+│   │   │   └── index.ts
+│   │   └── cleanup-expired-data/
+│   │       └── index.ts
+│   └── config.toml
+│
+├── .github/
+│   └── workflows/
+│       ├── deploy-management.yml
+│       ├── deploy-corporate.yml
+│       ├── deploy-superadmin.yml
+│       └── eas-build.yml
+│
+├── turbo.json
+├── package.json
+└── TASK.md                             ← Claude Code session handoff notes
+
+3. TECH STACK
+Layer	Tool	Version	Notes
+Mobile apps	React Native (Expo)	SDK 52	iOS + Android, single codebase per app
+Web apps	Next.js	14 (App Router)	Management, Corporate, Ops
+Monorepo	Turborepo	Latest	Shared packages across all apps
+Language	TypeScript	5.x strict	All apps, all packages, no JavaScript
+Auth + DB	Supabase	Latest	estatehq-app project, EU West
+Admin DB	Supabase	Latest	estatehq-ops project, EU West
+File storage	Supabase Storage	—	Report photos, logos, documents
+Realtime	Supabase Realtime	—	Emergency alerts, gate logs, reports
+Edge Functions	Supabase Edge Functions (Deno)	—	Gate trigger, notifications, AI, cron
+Gate hardware	Raspberry Pi Zero 2W + relay	—	On-estate, GPIO fires relay
+Gate scanner	Rugged Android (Ulefone/Doogee)	—	Replaces proprietary scanner hardware
+WhatsApp	Twilio WhatsApp API	—	Guest code delivery
+Email	Resend	—	All transactional email
+Push	Expo Push Notifications	—	Emergency, alerts, gate events
+Payments	Stripe	—	Subscriptions, invoices, customer portal
+AI	Claude API (Anthropic)	claude-haiku-4-5 / claude-sonnet-4	Report classification, approval summaries
+CDN + WAF	Cloudflare Pro	—	All web properties
+Zero Trust	Cloudflare Access	—	Ops portal only
+Web hosting	Vercel	—	Management, Corporate, Ops
+Marketing	Cloudflare Pages	—	estatehq.co.za
+CI/CD	GitHub Actions + Vercel + EAS	—	Auto-deploy on push
+Input validation	Zod	Latest	All API inputs, all Edge Functions
+State (mobile)	Zustand	Latest	Lightweight, no Redux
+State (web)	React Query (TanStack)	v5	Server state, cache, optimistic updates
+4. ESTATE ISOLATION — HOW IT WORKS
+This is the most critical security concept in EstateHQ. Every estate's data is completely isolated from every other estate. This is enforced at four layers simultaneously.
+
+Layer 1 — Database (Row-Level Security)
+Every table in estatehq-app has estate_id UUID NOT NULL. RLS policies are enabled on every table with default deny — if no policy matches, the query returns zero rows.
+
+-- Example: residents table
+-- Estate A's manager CANNOT query Estate B's residents
+-- Even if they know Estate B's UUID
+-- Even if they call the API directly
+-- Even if the app has a bug
+CREATE POLICY "residents_estate_scoped"
+ON users FOR SELECT
+USING (estate_id = auth_estate_id());
+-- auth_estate_id() returns the estate_id from the authenticated user's JWT
+-- If the JWT doesn't match, zero rows returned — not an error, just zero rows
+
+This is not application-level filtering. This is Postgres enforcing isolation before the query result is even assembled. The application cannot override it.
+
+Layer 2 — JWT Claims
+Every user's session token contains their estate_id and role as custom claims. These are set by Supabase Auth on login and cannot be modified by the client. Every RLS policy reads from auth.uid() and the JWT claims — not from the request body.
+
+// User's JWT payload (simplified)
+{
+  sub: "user-uuid",
+  estate_id: "estate-uuid",  // injected by Supabase hook on login
+  role: "resident",           // injected by Supabase hook on login
+  exp: 1234567890
+}
+
+Layer 3 — Application (Middleware)
+Next.js middleware validates the session on every request before the route handler runs. If the session is expired, invalid, or the role doesn't match the route, the user is redirected to login. This is a UX layer — it does not replace RLS.
+
+// apps/management/middleware.ts
+export async function middleware(request: NextRequest) {
+  const session = await getSession(request)
+  if (!session) return redirect('/login')
+  if (!['manager', 'supervisor'].includes(session.role)) return redirect('/unauthorized')
+  // RLS handles estate isolation — middleware handles role access
+}
+
+Layer 4 — Realtime Subscriptions
+All Supabase Realtime subscriptions are scoped to estate_id. A manager at Estate A cannot receive realtime events from Estate B even if they somehow constructed the subscription URL manually — RLS applies to Realtime too.
+
+// Always scoped — never subscribe to full table
+const subscription = supabase
+  .channel(`emergency_alerts:estate_id=eq.${estateId}`)
+  .on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'emergency_alerts',
+    filter: `estate_id=eq.${estateId}`  // RLS + filter = double protection
+  }, handler)
+  .subscribe()
+
+What Happens if RLS is Misconfigured
+The packages/supabase/src/helpers/rls.ts file contains test functions that verify isolation. These are run in CI before every production deployment:
+
+// Cross-estate query must return 0 rows — always
+export async function testCrossEstateIsolation(
+  estateAUserId: string,
+  estateBId: string
+): Promise<boolean> {
+  const client = createClientWithUser(estateAUserId)
+  const { data } = await client
+    .from('users')
+    .select('id')
+    .eq('estate_id', estateBId)
+  return data?.length === 0 // must be true
+}
+
+If this test fails, the CI pipeline blocks the deployment.
+
+5. DATABASE SCHEMA
+Schema Design Rules (Enforced)
+Every table: estate_id UUID NOT NULL REFERENCES estates(id)
+Every table: created_at TIMESTAMPTZ DEFAULT now()
+All list queries: cursor-based pagination, 20 rows default
+No SELECT * anywhere — columns always specified
+Indexes on: estate_id, user_id, created_at DESC, status on every major table
+Soft deletes only: status = 'deleted' or is_active = false — never hard DELETE on user data
+Immutable tables (logs): INSERT policy only, no UPDATE or DELETE policies
+-- ══════════════════════════════════════════════════════
+-- ESTATES
+-- ══════════════════════════════════════════════════════
+CREATE TABLE estates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  address text,
+  maps_link text,
+  logo_url text,
+  unit_count int,
+  timezone text DEFAULT 'Africa/Johannesburg',
+  province text,
+  estate_type text CHECK (estate_type IN (
+    'gated_residential','lifestyle_estate','cluster_home',
+    'sectional_title','mixed_use'
+  )),
+  features jsonb DEFAULT '{
+    "community_posts": false,
+    "community_events": false,
+    "amenity_bookings": false,
+    "weekly_maintenance": false,
+    "contractor_directory": false,
+    "emergency_button": true,
+    "walkin_gate_pin": false,
+    "walkin_gate_biometric_info": false,
+    "parcel_delivery_codes": true,
+    "non_emergency_alert": true,
+    "noise_complaints": false,
+    "staff_incident_reporting": true,
+    "report_voting": false,
+    "community_mute_hours": false,
+    "amenity_waitlist": false,
+    "amenity_damage_reporting": false,
+    "vehicle_register": false,
+    "vehicle_register_mandatory": false,
+    "account_standing_flag": false,
+    "document_library": false,
+    "anonymous_posts": true,
+    "resident_chooses_anonymity": true,
+    "post_moderation": false,
+    "approval_requests": true,
+    "trustee_portal": false,
+    "corporate_dashboard": false,
+    "management_broadcasts": true,
+    "email_resident_tool": true
+  }',
+  community_config jsonb DEFAULT '{
+    "mute_hours_start": "22:00",
+    "mute_hours_end": "07:00"
+  }',
+  guest_code_config jsonb DEFAULT '{
+    "available_durations_hours": [2, 6, 12, 24, 48],
+    "max_active_codes_per_unit": 10,
+    "max_active_codes_per_resident": null,
+    "code_limit_type": "per_unit",
+    "allow_custom_duration": false,
+    "allow_extension": true,
+    "max_extensions": 1,
+    "code_format": "pin_and_qr"
+  }',
+  security_config jsonb DEFAULT '{
+    "resident_hold_seconds": 3,
+    "security_hold_seconds": 2,
+    "undo_window_seconds": 5,
+    "gate_rate_limit_per_minute": 10,
+    "emergency_hold_seconds": 5,
+    "emergency_confirmation_required": false,
+    "false_alarm_strikes_before_suspension": 3,
+    "emergency_suspension_hours": 24
+  }',
+  escalation_config jsonb DEFAULT '{
+    "unassigned_threshold_hours": 12,
+    "open_threshold_hours": 48,
+    "manager_escalation_hours": 72
+  }',
+  gates jsonb DEFAULT '[]',
+  -- gates: [{id, label, type: "vehicle"|"pedestrian", access: "resident"|"visitor"|"both",
+  --          group_id, group_label, pi_ip, pi_configured: false}]
+  gate_groups jsonb DEFAULT '[]',
+  -- gate_groups: [{id, label}]
+  approval_config jsonb DEFAULT '{
+    "approval_threshold_rands": 5000,
+    "votes_required": 2,
+    "quotes_required": 3,
+    "notify_trustees_on_emergency": true
+  }',
+  payment_status text DEFAULT 'active' CHECK (
+    payment_status IN ('active','overdue','suspended','churned')
+  ),
+  payment_overdue_since timestamptz,
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  monthly_fee_rands numeric(10,2),
+  plan_notes text,
+  status text DEFAULT 'active' CHECK (status IN ('active','suspended','churned','onboarding')),
+  onboarding_complete boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+-- ══════════════════════════════════════════════════════
+-- USERS (all roles in one table)
+-- ══════════════════════════════════════════════════════
+CREATE TABLE users (
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  first_name text NOT NULL,
+  last_name text NOT NULL,
+  email text NOT NULL,
+  phone text,
+  role text NOT NULL CHECK (role IN (
+    'resident','security','maintenance','supervisor',
+    'manager','trustee','corporate_agent'
+  )),
+  unit_number text,
+  status text DEFAULT 'active' CHECK (status IN ('active','suspended')),
+  account_standing text DEFAULT 'good' CHECK (account_standing IN ('good','arrears')),
+  emergency_strikes int DEFAULT 0,
+  emergency_suspended_until timestamptz,
+  first_login boolean DEFAULT true,
+  last_login_at timestamptz,
+  push_token text,
+  push_token_updated_at timestamptz,
+  unit_change_log jsonb DEFAULT '[]',
+  -- [{old_unit, new_unit, changed_at, changed_by}]
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX idx_users_estate_role ON users(estate_id, role);
+CREATE INDEX idx_users_estate_status ON users(estate_id, status);
+CREATE INDEX idx_users_email ON users(email);
+-- ══════════════════════════════════════════════════════
+-- GATE LOGS (immutable — INSERT only)
+-- ══════════════════════════════════════════════════════
+CREATE TABLE gate_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  gate_id text NOT NULL,
+  gate_label text NOT NULL,
+  gate_group_id text,
+  gate_group_label text,
+  triggered_by uuid REFERENCES users(id),
+  trigger_type text NOT NULL CHECK (
+    trigger_type IN ('resident','security','supervisor','system','manager')
+  ),
+  unit_number text,
+  actor_name text,
+  direction text CHECK (direction IN ('entry','exit')),
+  status text DEFAULT 'success' CHECK (
+    status IN ('success','failed','cancelled','timeout','offline_cache')
+  ),
+  hardware_response_ms int,
+  offline_validated boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX idx_gate_logs_estate_created ON gate_logs(estate_id, created_at DESC);
+CREATE INDEX idx_gate_logs_estate_gate ON gate_logs(estate_id, gate_id);
+-- ══════════════════════════════════════════════════════
+-- GUEST CODES
+-- ══════════════════════════════════════════════════════
+CREATE TABLE guest_codes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  unit_id uuid REFERENCES users(id),
+  guest_first_name text NOT NULL,
+  guest_last_name text NOT NULL,
+  guest_phone text,
+  is_parcel boolean DEFAULT false,
+  pin_code text NOT NULL,
+  qr_payload text NOT NULL,
+  valid_from timestamptz DEFAULT now(),
+  valid_until timestamptz NOT NULL,
+  uses_total int DEFAULT 3,
+  uses_remaining int DEFAULT 3,
+  extension_count int DEFAULT 0,
+  is_active boolean DEFAULT true,
+  whatsapp_sent boolean DEFAULT false,
+  whatsapp_failed boolean DEFAULT false,
+  whatsapp_failure_reason text,
+  parcel_confirmed boolean DEFAULT false,
+  parcel_confirmed_by uuid REFERENCES users(id),
+  parcel_confirmed_at timestamptz,
+  deactivated_by uuid REFERENCES users(id),
+  deactivated_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX idx_guest_codes_estate_active ON guest_codes(estate_id, is_active);
+CREATE INDEX idx_guest_codes_pin ON guest_codes(estate_id, pin_code, is_active);
+CREATE INDEX idx_guest_codes_unit ON guest_codes(unit_id);
+-- ══════════════════════════════════════════════════════
+-- MAINTENANCE REPORTS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE maintenance_reports (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  ticket_number text GENERATED ALWAYS AS (
+    'TKT-' || upper(substring(id::text, 1, 8))
+  ) STORED,
+  submitted_by uuid REFERENCES users(id),
+  unit_number text,
+  title text NOT NULL,
+  description text NOT NULL,
+  ai_category text,
+  ai_classification text CHECK (
+    ai_classification IN ('maintenance','security','urgent','redirect_community','unclear')
+  ),
+  ai_classification_confidence numeric(3,2),
+  photo_url text,
+  photo_thumbnail_url text,
+  category text CHECK (category IN ('maintenance','security','urgent','general')),
+  priority text DEFAULT 'medium' CHECK (priority IN ('low','medium','high')),
+  status text DEFAULT 'open' CHECK (
+    status IN ('open','in_progress','resolved','closed','reopened')
+  ),
+  assigned_to uuid REFERENCES users(id),
+  escalation_level int DEFAULT 0,
+  escalated_at timestamptz,
+  duplicate_of uuid REFERENCES maintenance_reports(id),
+  vote_count int DEFAULT 0,
+  resolved_at timestamptz,
+  resident_confirmed_resolved boolean,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+CREATE INDEX idx_reports_estate_status ON maintenance_reports(estate_id, status);
+CREATE INDEX idx_reports_assigned ON maintenance_reports(assigned_to);
+CREATE INDEX idx_reports_estate_created ON maintenance_reports(estate_id, created_at DESC);
+-- ══════════════════════════════════════════════════════
+-- REPORT STATUS HISTORY (immutable)
+-- ══════════════════════════════════════════════════════
+CREATE TABLE report_status_history (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  report_id uuid NOT NULL REFERENCES maintenance_reports(id),
+  status text NOT NULL,
+  changed_by uuid REFERENCES users(id),
+  note text,
+  is_internal boolean DEFAULT false,
+  photo_url text,
+  created_at timestamptz DEFAULT now()
+);
+-- ══════════════════════════════════════════════════════
+-- EMERGENCY ALERTS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE emergency_alerts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  emergency_ref text GENERATED ALWAYS AS (
+    '#E' || upper(substring(id::text, 1, 4))
+  ) STORED,
+  triggered_by uuid REFERENCES users(id),
+  trigger_type text DEFAULT 'resident' CHECK (
+    trigger_type IN ('resident','security','staff')
+  ),
+  unit_number text,
+  status text DEFAULT 'active' CHECK (
+    status IN ('active','cancelled','acknowledged','resolved','false_alarm')
+  ),
+  acknowledged_by uuid REFERENCES users(id),
+  acknowledged_at timestamptz,
+  cancelled_at timestamptz,
+  resolved_at timestamptz,
+  resolved_by uuid REFERENCES users(id),
+  resolution_note text,
+  false_alarm_flagged_by uuid REFERENCES users(id),
+  false_alarm_flagged_at timestamptz,
+  false_alarm_reason text,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX idx_emergency_estate_status ON emergency_alerts(estate_id, status);
+-- ══════════════════════════════════════════════════════
+-- TASKS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE tasks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  title text NOT NULL,
+  description text,
+  assigned_to uuid REFERENCES users(id),
+  created_by uuid REFERENCES users(id),
+  due_date date,
+  priority text DEFAULT 'medium' CHECK (priority IN ('low','medium','high')),
+  status text DEFAULT 'pending' CHECK (
+    status IN ('pending','in_progress','completed')
+  ),
+  repeat text DEFAULT 'none' CHECK (repeat IN ('none','daily','weekly')),
+  completion_note text,
+  completion_photo_url text,
+  source_incident_id uuid REFERENCES security_incidents(id),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+-- ══════════════════════════════════════════════════════
+-- SHIFTS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE shifts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  user_id uuid NOT NULL REFERENCES users(id),
+  started_at timestamptz DEFAULT now(),
+  ended_at timestamptz,
+  status text DEFAULT 'active' CHECK (status IN ('active','ended'))
+);
+CREATE INDEX idx_shifts_estate_active ON shifts(estate_id, status);
+-- ══════════════════════════════════════════════════════
+-- SECURITY INCIDENTS (immutable)
+-- ══════════════════════════════════════════════════════
+CREATE TABLE security_incidents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  incident_ref text GENERATED ALWAYS AS (
+    'INC-' || upper(substring(id::text, 1, 6))
+  ) STORED,
+  reported_by uuid NOT NULL REFERENCES users(id),
+  incident_type text NOT NULL CHECK (incident_type IN (
+    'break_in_attempt','suspicious_vehicle','theft',
+    'vandalism','trespassing','medical','fire','other'
+  )),
+  severity text DEFAULT 'medium' CHECK (severity IN ('low','medium','high','critical')),
+  description text NOT NULL,
+  photo_url text,
+  location_on_estate text,
+  vehicle_description text,
+  status text DEFAULT 'open' CHECK (
+    status IN ('open','acknowledged','under_investigation','resolved','false_report')
+  ),
+  acknowledged_by uuid REFERENCES users(id),
+  acknowledged_at timestamptz,
+  resolved_at timestamptz,
+  resolution_note text,
+  converted_to_task_id uuid REFERENCES tasks(id),
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX idx_incidents_estate_status ON security_incidents(estate_id, status);
+-- ══════════════════════════════════════════════════════
+-- CONTRACTORS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE contractors (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  name text NOT NULL,
+  logo_url text,
+  description text,
+  trade_categories text[],
+  phone text,
+  whatsapp text,
+  email text,
+  rating_sum int DEFAULT 0,
+  rating_count int DEFAULT 0,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+-- ══════════════════════════════════════════════════════
+-- APPROVAL REQUESTS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE approval_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  approval_ref text GENERATED ALWAYS AS (
+    'APR-' || upper(substring(id::text, 1, 6))
+  ) STORED,
+  request_type text NOT NULL CHECK (request_type IN (
+    'quote','expense','policy_change','vendor_onboard','other'
+  )),
+  title text NOT NULL,
+  description text,
+  amount_rands numeric(10,2),
+  document_urls text[],
+  submitted_by uuid NOT NULL REFERENCES users(id),
+  required_votes int DEFAULT 2,
+  votes_received int DEFAULT 0,
+  votes_approved int DEFAULT 0,
+  votes_rejected int DEFAULT 0,
+  status text DEFAULT 'pending' CHECK (status IN (
+    'pending','approved','rejected','more_info','cancelled'
+  )),
+  ai_summary text,
+  ai_recommendation text,
+  ai_summary_generated_at timestamptz,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+CREATE INDEX idx_approvals_estate_status ON approval_requests(estate_id, status);
+-- ══════════════════════════════════════════════════════
+-- APPROVAL VOTES (immutable)
+-- ══════════════════════════════════════════════════════
+CREATE TABLE approval_votes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  approval_request_id uuid NOT NULL REFERENCES approval_requests(id),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  voter_id uuid NOT NULL REFERENCES users(id),
+  vote text NOT NULL CHECK (vote IN ('approved','rejected','more_info')),
+  comment text,
+  voted_at timestamptz DEFAULT now(),
+  UNIQUE(approval_request_id, voter_id)
+);
+-- ══════════════════════════════════════════════════════
+-- MEETINGS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE meetings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  meeting_type text NOT NULL CHECK (meeting_type IN ('agm','trustee','special')),
+  title text NOT NULL,
+  scheduled_at timestamptz NOT NULL,
+  location text,
+  agenda_items jsonb DEFAULT '[]',
+  minutes_text text,
+  minutes_url text,
+  status text DEFAULT 'scheduled' CHECK (
+    status IN ('scheduled','completed','cancelled')
+  ),
+  created_by uuid REFERENCES users(id),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+-- ══════════════════════════════════════════════════════
+-- MEETING RESOLUTIONS (immutable)
+-- ══════════════════════════════════════════════════════
+CREATE TABLE meeting_resolutions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  meeting_id uuid NOT NULL REFERENCES meetings(id),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  resolution_number text NOT NULL,
+  description text NOT NULL,
+  result text NOT NULL CHECK (result IN ('passed','rejected','deferred')),
+  votes_for int DEFAULT 0,
+  votes_against int DEFAULT 0,
+  votes_abstained int DEFAULT 0,
+  resolved_at timestamptz DEFAULT now(),
+  UNIQUE(estate_id, resolution_number)
+);
+-- ══════════════════════════════════════════════════════
+-- DOCUMENTS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE documents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  document_type text NOT NULL CHECK (document_type IN (
+    'conduct_rules','visitor_policy','body_corporate_rules',
+    'emergency_contacts','insurance_certificate','ten_year_plan',
+    'audited_financials','csos_submission','popia_review','custom'
+  )),
+  custom_label text,
+  file_url text,
+  external_url text,
+  version text,
+  valid_until date,
+  uploaded_by uuid REFERENCES users(id),
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+-- ══════════════════════════════════════════════════════
+-- ESTATE PERFORMANCE SNAPSHOTS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE estate_performance_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  snapshot_date date NOT NULL DEFAULT CURRENT_DATE,
+  open_tickets int DEFAULT 0,
+  unassigned_tickets int DEFAULT 0,
+  avg_resolution_days numeric(4,1),
+  alerts_this_month int DEFAULT 0,
+  levy_collection_rate numeric(5,2),
+  performance_score int CHECK (performance_score BETWEEN 0 AND 100),
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(estate_id, snapshot_date)
+);
+-- ══════════════════════════════════════════════════════
+-- CORPORATE AGENT ESTATE MEMBERSHIPS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE corporate_agent_estates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_user_id uuid NOT NULL REFERENCES users(id),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  assigned_by uuid REFERENCES users(id),
+  assigned_at timestamptz DEFAULT now(),
+  UNIQUE(agent_user_id, estate_id)
+);
+-- ══════════════════════════════════════════════════════
+-- TRUSTEE ESTATE MEMBERSHIPS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE trustee_estate_memberships (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  trustee_user_id uuid NOT NULL REFERENCES users(id),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  role_in_estate text DEFAULT 'trustee' CHECK (
+    role_in_estate IN ('trustee','chairperson','treasurer')
+  ),
+  term_start date,
+  term_end date,
+  is_active boolean DEFAULT true,
+  assigned_by uuid REFERENCES users(id),
+  assigned_at timestamptz DEFAULT now(),
+  UNIQUE(trustee_user_id, estate_id)
+);
+-- ══════════════════════════════════════════════════════
+-- COMMUNITY POSTS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE community_posts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  author_id uuid REFERENCES users(id),
+  content text NOT NULL,
+  photo_url text,
+  post_type text DEFAULT 'general' CHECK (
+    post_type IN ('general','noise_complaint','lost_found','announcement')
+  ),
+  is_anonymous boolean DEFAULT true,
+  status text DEFAULT 'active' CHECK (status IN ('active','deleted','pending_moderation')),
+  deleted_by uuid REFERENCES users(id),
+  deletion_reason text,
+  created_at timestamptz DEFAULT now()
+);
+-- ══════════════════════════════════════════════════════
+-- COMMUNITY EVENTS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE community_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  created_by uuid REFERENCES users(id),
+  title text NOT NULL,
+  description text,
+  image_url text,
+  location text,
+  starts_at timestamptz NOT NULL,
+  ends_at timestamptz NOT NULL,
+  status text DEFAULT 'active' CHECK (status IN ('active','cancelled')),
+  cancelled_by uuid REFERENCES users(id),
+  cancellation_reason text,
+  created_at timestamptz DEFAULT now()
+);
+CREATE TABLE event_rsvps (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id uuid NOT NULL REFERENCES community_events(id),
+  user_id uuid NOT NULL REFERENCES users(id),
+  response text NOT NULL CHECK (response IN ('yes','no','maybe')),
+  guest_count int DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(event_id, user_id)
+);
+-- ══════════════════════════════════════════════════════
+-- AMENITIES
+-- ══════════════════════════════════════════════════════
+CREATE TABLE amenities (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  name text NOT NULL,
+  description text,
+  photo_url text,
+  slot_duration_mins int DEFAULT 60,
+  available_days text[],
+  available_from time DEFAULT '08:00',
+  available_until time DEFAULT '20:00',
+  max_concurrent int DEFAULT 1,
+  max_bookings_per_unit_per_week int DEFAULT 2,
+  cancellation_policy text DEFAULT 'anytime' CHECK (
+    cancellation_policy IN ('anytime','24hr_notice','48hr_notice')
+  ),
+  waitlist_enabled boolean DEFAULT false,
+  damage_reporting_enabled boolean DEFAULT false,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+CREATE TABLE amenity_bookings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  amenity_id uuid NOT NULL REFERENCES amenities(id),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  resident_id uuid NOT NULL REFERENCES users(id),
+  slot_start timestamptz NOT NULL,
+  slot_end timestamptz NOT NULL,
+  status text DEFAULT 'confirmed' CHECK (status IN ('confirmed','cancelled','completed')),
+  cancelled_by uuid REFERENCES users(id),
+  cancellation_reason text,
+  damage_reported boolean DEFAULT false,
+  damage_description text,
+  created_at timestamptz DEFAULT now()
+);
+CREATE TABLE amenity_waitlist (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  amenity_id uuid NOT NULL REFERENCES amenities(id),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  resident_id uuid NOT NULL REFERENCES users(id),
+  desired_date date NOT NULL,
+  desired_start time NOT NULL,
+  notified boolean DEFAULT false,
+  notified_at timestamptz,
+  expires_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+-- ══════════════════════════════════════════════════════
+-- VEHICLE REGISTER
+-- ══════════════════════════════════════════════════════
+CREATE TABLE vehicles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  unit_number text NOT NULL,
+  registered_by uuid NOT NULL REFERENCES users(id),
+  make text NOT NULL,
+  model text NOT NULL,
+  colour text NOT NULL,
+  licence_plate text NOT NULL,
+  is_active boolean DEFAULT true,
+  approved_by uuid REFERENCES users(id),
+  approved_at timestamptz,
+  approval_status text DEFAULT 'pending' CHECK (
+    approval_status IN ('pending','approved','rejected')
+  ),
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX idx_vehicles_estate_unit ON vehicles(estate_id, unit_number);
+-- ══════════════════════════════════════════════════════
+-- MANAGEMENT BROADCASTS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE management_broadcasts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  sent_by uuid NOT NULL REFERENCES users(id),
+  message_type text DEFAULT 'broadcast' CHECK (
+    message_type IN ('broadcast','unit_specific')
+  ),
+  target_unit_number text,
+  target_user_id uuid REFERENCES users(id),
+  subject text,
+  content text NOT NULL,
+  attachment_url text,
+  delivery_channel text[] DEFAULT ARRAY['push','email'],
+  push_delivered_count int DEFAULT 0,
+  email_delivered_count int DEFAULT 0,
+  delivery_failed boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+-- ══════════════════════════════════════════════════════
+-- WALK-IN GATE PINS
+-- ══════════════════════════════════════════════════════
+CREATE TABLE walkin_gate_pins (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  pin_code text NOT NULL,
+  valid_from timestamptz NOT NULL,
+  valid_until timestamptz NOT NULL,
+  created_by uuid REFERENCES users(id),
+  notification_sent boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+-- ══════════════════════════════════════════════════════
+-- DATA DELETION REQUESTS (POPIA)
+-- ══════════════════════════════════════════════════════
+CREATE TABLE data_deletion_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  estate_id uuid NOT NULL REFERENCES estates(id),
+  use **...**
+_This response is too long to display in full._
+
+
+Show less
+2 hours ago
+
+1 message & 1 action
+Which part of EstateHQ do you want to build first?
+
+Resident mobile app (Expo — gate, guests, reports)

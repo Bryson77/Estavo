@@ -16,7 +16,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useColors } from "@/hooks/useColors";
-import { useApp, MaintenanceReport } from "@/context/AppContext";
+import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 import { ReportCard } from "@/components/ReportCard";
 
 type Category = "maintenance" | "security" | "urgent" | "general";
@@ -65,7 +66,9 @@ export default function ReportsScreen() {
     setPriority("medium");
   };
 
-  const handleSubmit = () => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
     if (!title.trim()) {
       Alert.alert("Required", "Please provide a short title for the issue.");
       return;
@@ -74,10 +77,17 @@ export default function ReportsScreen() {
       Alert.alert("Required", "Please describe the issue in more detail.");
       return;
     }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    addReport({ title: title.trim(), description: description.trim(), category, priority });
-    setShowModal(false);
-    resetForm();
+    setSubmitting(true);
+    try {
+      await addReport({ title: title.trim(), description: description.trim(), category, priority });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowModal(false);
+      resetForm();
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Failed to submit report.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const openTickets = reports.filter((r) => r.status === "open").length;

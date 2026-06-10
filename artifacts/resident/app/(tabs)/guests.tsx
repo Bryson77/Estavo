@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 import { GuestCodeCard } from "@/components/GuestCodeCard";
 
 const DURATION_OPTIONS = [
@@ -58,29 +59,30 @@ export default function GuestsScreen() {
     setIsParcel(false);
   };
 
-  const handleCreate = () => {
+  const [creating, setCreating] = useState(false);
+
+  const handleCreate = async () => {
     if (!isParcel && (!firstName.trim() || !lastName.trim())) {
       Alert.alert("Required", "Please enter guest first and last name.");
       return;
     }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const validUntil = new Date(
-      Date.now() + selectedDuration * 3600000
-    ).toISOString();
-    addGuestCode({
-      guestFirstName: isParcel ? "Parcel" : firstName.trim(),
-      guestLastName: isParcel ? "Delivery" : lastName.trim(),
-      guestPhone: phone.trim(),
-      isParcel,
-      pinCode: "",
-      validFrom: new Date().toISOString(),
-      validUntil,
-      usesTotal: isParcel ? 1 : 3,
-      usesRemaining: isParcel ? 1 : 3,
-      isActive: true,
-    });
-    setShowModal(false);
-    resetForm();
+    setCreating(true);
+    try {
+      await addGuestCode({
+        guestFirstName: isParcel ? "Parcel" : firstName.trim(),
+        guestLastName: isParcel ? "Delivery" : lastName.trim(),
+        guestPhone: phone.trim() || undefined,
+        isParcel,
+        durationHours: selectedDuration,
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowModal(false);
+      resetForm();
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Failed to create code.");
+    } finally {
+      setCreating(false);
+    }
   };
 
   const inputStyle = {
