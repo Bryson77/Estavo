@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "EstateHQ Resident"
+version = "1.0.0"
+id = "artifacts/resident"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 22823
+
+[services.development]
+run = "pnpm --filter @workspace/resident run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/resident", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/resident", "run", "serve" ]
+
+[services.env]
+PORT = "22823"
+BASE_PATH = "/"
