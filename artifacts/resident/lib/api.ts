@@ -7,9 +7,9 @@ const BASE_URL = (() => {
   const replId = Constants.expoConfig?.extra?.replId ?? process.env.EXPO_PUBLIC_REPL_ID;
   const domain = Constants.expoConfig?.extra?.domain ?? process.env.EXPO_PUBLIC_DOMAIN;
   if (domain) {
-    return `https://${domain}/api-server/api`;
+    return `https://${domain}/api`;
   }
-  return "http://localhost:3001/api";
+  return "http://localhost:8080/api";
 })();
 
 async function request<T>(
