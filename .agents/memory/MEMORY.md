@@ -1,0 +1,1 @@
+- [Expo on Replit setup](expo-replit-setup.md) — how to register, run, and present the Expo artifact so it shows as a mobile frame (not a web page)

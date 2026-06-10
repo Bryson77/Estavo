@@ -9,7 +9,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TouchableWithoutFeedback,
+
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -168,14 +168,14 @@ export default function EmergencyScreen() {
           <Animated.View
             style={[styles.holdRing, { width: ring, height: ring, borderRadius: 200, opacity: ringOpacity, borderColor: "#EF4444" }]}
           />
-          <TouchableWithoutFeedback onPressIn={startHold} onPressOut={stopHold}>
+          <Pressable onPressIn={startHold} onPressOut={stopHold}>
             <Animated.View style={[styles.holdCircle, { backgroundColor: isHolding || loading ? "#DC2626" : "#8B1C1C" }]}>
               <Ionicons name="alarm-outline" size={34} color="#FFFFFF" />
               <Text style={styles.holdCircleLabel}>
                 {loading ? "Alerting..." : isHolding ? "Hold..." : "SOS"}
               </Text>
             </Animated.View>
-          </TouchableWithoutFeedback>
+          </Pressable>
         </View>
 
         <Text style={[styles.disclaimer, { color: colors.mutedForeground }]}>

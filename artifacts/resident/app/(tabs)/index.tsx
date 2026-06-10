@@ -10,7 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableWithoutFeedback,
+
   View,
   ActivityIndicator,
 } from "react-native";
@@ -87,7 +87,7 @@ function InlineHoldButton({ onComplete, color }: { onComplete: () => void; color
   const fillWidth = progress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
 
   return (
-    <TouchableWithoutFeedback onPressIn={startHold} onPressOut={stopHold}>
+    <Pressable onPressIn={startHold} onPressOut={stopHold}>
       <View style={[styles.holdRow, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
         <Animated.View
           style={[StyleSheet.absoluteFill, { borderRadius: 10, backgroundColor: "rgba(255,255,255,0.15)", width: fillWidth as any }]}
@@ -97,7 +97,7 @@ function InlineHoldButton({ onComplete, color }: { onComplete: () => void; color
         </Text>
         <Ionicons name={completed ? "checkmark" : "chevron-forward"} size={16} color="#FFFFFF" />
       </View>
-    </TouchableWithoutFeedback>
+    </Pressable>
   );
 }
 
