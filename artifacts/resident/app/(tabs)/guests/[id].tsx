@@ -8,11 +8,13 @@ import {
   StyleSheet,
   Text,
   View,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function GuestDetailScreen() {
   const colors = useColors();

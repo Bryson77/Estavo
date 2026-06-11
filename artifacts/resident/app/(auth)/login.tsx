@@ -16,13 +16,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiClient } from "@/lib/api";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { setSession } = useAuth();
+  const { login: authLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -63,7 +63,7 @@ export default function LoginScreen() {
     try {
       const data = await apiClient.login(trimmed, password);
       setTimeout(() => {
-        setSession(data.token, data.user);
+        authLogin(data.token, data.user);
       }, 100);
     } catch (err: any) {
       Alert.alert("Login Failed", err.message ?? "Invalid email or password.");
@@ -248,10 +248,37 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#FFFFFF",
   },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 16,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+  },
+  secondaryBtn: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  secondaryBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+  },
   footer: {
     fontFamily: "Inter_400Regular",
-    fontSize: 12,
+    fontSize: 13,
     textAlign: "center",
     lineHeight: 18,
+    marginTop: "auto",
+    paddingBottom: 20,
   },
 });

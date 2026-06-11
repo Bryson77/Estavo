@@ -9,6 +9,7 @@ import {
   StyleSheet,
   View,
   Linking,
+  Text,
 } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
