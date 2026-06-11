@@ -1,8 +1,19 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "K6rhxtZfv-Xw80LCPx-Ej"
 uri = "file://artifacts/resident/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "Bzf3XCW_CXuybcGxd2FwR"
+uri = "file://attached_assets/ESTATE_HQ_LOGO_1781136868919.png"
+type = "image"
+title = "EstateHQ Logo"
+
+[[outputs]]
+id = "VFJ6iWrcjUfVGH2Prl0c1"
+uri = "file://PROGRESS.md"
+type = "text"
+title = "EstateHQ — Progress Log"
