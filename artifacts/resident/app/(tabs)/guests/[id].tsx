@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Clipboard from "expo-clipboard";
 import React from "react";
 import {
   Pressable,
@@ -19,6 +20,7 @@ export default function GuestDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { guestCodes } = useApp();
+  const { user } = useAuth();
 
   const code = guestCodes.find(c => c.id === id);
 
@@ -32,6 +34,26 @@ export default function GuestDetailScreen() {
 
   const validUntil = new Date(code.validUntil);
   const isExpired = validUntil < new Date() || !code.isActive;
+
+  const handleCopy = async () => {
+    const text = `Hi ${code.isParcel ? "Parcel Delivery" : code.guestFirstName},
+
+You've been invited to ${user?.estateName ?? "the estate"} by ${user?.firstName} ${user?.lastName}, Unit ${user?.unitNumber}.
+
+Your entry code is: ${code.pinCode}
+
+Valid: ${new Date(code.createdAt).toLocaleDateString("en-ZA", {day: "numeric", month: "short", year: "numeric"})}, ${new Date(code.createdAt).toLocaleTimeString("en-ZA", {hour: "2-digit", minute: "2-digit", hour12: false})} – ${validUntil.toLocaleDateString("en-ZA", {day: "numeric", month: "short", year: "numeric"})}, ${validUntil.toLocaleTimeString("en-ZA", {hour: "2-digit", minute: "2-digit", hour12: false})}
+Gate: Main Entry Gate
+Uses: ${code.usesRemaining} remaining
+
+📍 Estate location: https://maps.google.com/?q=${encodeURIComponent(user?.estateName ?? "")}
+
+Show this code to security on arrival or present it at the entry point.
+
+– EstateHQ`;
+    await Clipboard.setStringAsync(text);
+    Alert.alert("Copied", "Guest code message copied to clipboard.");
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -70,6 +92,19 @@ export default function GuestDetailScreen() {
           <InfoRow label="Valid Until" value={validUntil.toLocaleString()} colors={colors} />
           <InfoRow label="Status" value={isExpired ? "Expired" : "Active"} valueColor={isExpired ? colors.mutedForeground : colors.success} colors={colors} />
         </View>
+
+        {!isExpired && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.copyBtn,
+              { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }
+            ]}
+            onPress={handleCopy}
+          >
+            <Ionicons name="copy-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.copyBtnText}>Copy Code</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </View>
   );
@@ -130,4 +165,20 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: "row", justifyContent: "space-between" },
   infoLabel: { fontSize: 14 },
   infoValue: { fontSize: 14, fontWeight: "600" },
+  copyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    width: "100%",
+  },
+  copyBtnText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
 });

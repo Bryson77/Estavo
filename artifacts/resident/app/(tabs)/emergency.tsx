@@ -7,8 +7,8 @@ import {
   Animated,
   Pressable,
   StyleSheet,
-  Text,
   View,
+  Linking,
 } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
@@ -27,6 +27,7 @@ export default function EmergencyScreen() {
   const [triggered, setTriggered] = useState(false);
   const [loading, setLoading] = useState(false);
   const [emergencyRef, setEmergencyRef] = useState<string | null>(null);
+  const [undoCountdown, setUndoCountdown] = useState(5);
 
   const progress = useRef(new Animated.Value(0)).current;
   const animRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -82,6 +83,16 @@ export default function EmergencyScreen() {
     Animated.timing(progress, { toValue: 0, duration: 250, useNativeDriver: false }).start();
   }, [progress]);
 
+  useEffect(() => {
+    let timer: any;
+    if (triggered && undoCountdown > 0) {
+      timer = setInterval(() => {
+        setUndoCountdown(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [triggered, undoCountdown]);
+
   useEffect(() => () => { animRef.current?.stop(); }, []);
 
   // Animated ring radius (0 → 90 extra px on each side)
@@ -119,16 +130,27 @@ export default function EmergencyScreen() {
           <Text style={styles.confirmedUnit}>
             Unit {user?.unitNumber} · {user?.estateName}
           </Text>
+
+          {undoCountdown > 0 && (
+            <Pressable
+              style={styles.cancelBtn}
+              onPress={() => {
+                // Mock sending cancellation
+                router.back();
+              }}
+            >
+              <Text style={styles.cancelBtnText}>Undo ({undoCountdown}s)</Text>
+            </Pressable>
+          )}
+
           <Pressable
-            style={styles.cancelBtn}
+            style={[styles.cancelBtn, { backgroundColor: "transparent", borderWidth: 1, borderColor: "#EF4444", marginTop: undoCountdown > 0 ? 10 : 20 }]}
             onPress={() => {
-              Alert.alert("Cancel Alert", "This will mark the alert as a false alarm.", [
-                { text: "Keep Active", style: "cancel" },
-                { text: "Cancel Alert", style: "destructive", onPress: () => router.back() },
-              ]);
+              Linking.openURL("tel:0800123456");
             }}
           >
-            <Text style={styles.cancelBtnText}>Cancel (False Alarm)</Text>
+            <Ionicons name="call" size={18} color="#EF4444" style={{ marginRight: 8 }} />
+            <Text style={[styles.cancelBtnText, { color: "#EF4444" }]}>Call Security</Text>
           </Pressable>
         </View>
       </View>
@@ -266,7 +288,7 @@ const styles = StyleSheet.create({
   confirmedTitle: { fontFamily: "Inter_700Bold", fontSize: 32, color: "#EF4444", letterSpacing: 2 },
   confirmedRef: { fontFamily: "Inter_500Medium", fontSize: 13, color: "#EF444480" },
   confirmedDesc: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#FFFFFF", textAlign: "center", lineHeight: 22 },
-  confirmedUnit: { fontFamily: "Inter_500Medium", fontSize: 12, color: "#FFFFFF66" },
-  cancelBtn: { marginTop: 20, backgroundColor: "#7B1111", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32 },
+  confirmedUnit: { fontFamily: "Inter_500Medium", fontSize: 12, color: "#FFFFFF66", marginBottom: 20 },
+  cancelBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#7B1111", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, width: "100%" },
   cancelBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#FFFFFF" },
 });

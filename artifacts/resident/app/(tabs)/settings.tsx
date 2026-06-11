@@ -132,7 +132,7 @@ export default function SettingsScreen() {
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <SettingRow icon="help-circle-outline" label="Help & FAQ" onPress={() => Alert.alert("Help", "Support portal coming soon.")} />
           <SettingRow icon="document-text-outline" label="Privacy Policy" onPress={() => {}} />
-          <SettingRow icon="trash-outline" label="Request Data Deletion" onPress={() => Alert.alert("Data Deletion", "Your request for account and data deletion has been logged. Estate management will contact you shortly.", [{text: "OK"}])} destructive />
+          <SettingRow icon="trash-outline" label="Request Data Deletion" onPress={() => router.push("/(tabs)/delete-account" as any)} destructive />
         </View>
 
         {/* Sign out */}

@@ -10,9 +10,9 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-
   View,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -113,6 +113,8 @@ export default function HomeScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom + 90;
 
   const [gates, setGates] = useState<any[]>([]);
+  const [openedGate, setOpenedGate] = useState<{ id: string; label: string; direction: string } | null>(null);
+  const [undoCountdown, setUndoCountdown] = useState(5);
 
   useEffect(() => {
     if (token) {
@@ -137,6 +139,8 @@ export default function HomeScreen() {
   }, [token]);
 
   const handleGateOpen = async (gateId: string, gateLabel: string, direction: "entry" | "exit") => {
+    setOpenedGate({ id: gateId, label: gateLabel, direction });
+    setUndoCountdown(5);
     if (token) {
       try {
         await apiClient.triggerGate(token, gateId, gateLabel, direction);
@@ -156,6 +160,25 @@ export default function HomeScreen() {
       }
     }
   };
+
+  const handleGateCancel = () => {
+    if (openedGate) {
+      // Mock sending cancellation command
+      setOpenedGate(null);
+    }
+  };
+
+  useEffect(() => {
+    let timer: any;
+    if (openedGate && undoCountdown > 0) {
+      timer = setInterval(() => {
+        setUndoCountdown(prev => prev - 1);
+      }, 1000);
+    } else if (openedGate && undoCountdown === 0) {
+      setOpenedGate(null);
+    }
+    return () => clearInterval(timer);
+  }, [openedGate, undoCountdown]);
 
   const handleEmergency = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -300,6 +323,27 @@ export default function HomeScreen() {
           </View>
         </Pressable>
       </ScrollView>
+
+      {openedGate && (
+        <Modal transparent animationType="fade" visible={!!openedGate}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.successCircle}>
+                <Ionicons name="checkmark" size={32} color="#FFFFFF" />
+              </View>
+              <Text style={[styles.successTitle, { color: colors.foreground }]}>{openedGate.label} opening</Text>
+              <Text style={[styles.successDesc, { color: colors.mutedForeground }]}>Logged with your identity</Text>
+              
+              <Pressable
+                style={[styles.undoBtn, { borderColor: colors.border }]}
+                onPress={handleGateCancel}
+              >
+                <Text style={[styles.undoBtnText, { color: colors.foreground }]}>Undo ({undoCountdown}s)</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -353,4 +397,11 @@ const styles = StyleSheet.create({
   emergencyLabel: { fontFamily: "Inter_700Bold", fontSize: 14, color: "#FFFFFF", letterSpacing: 1, marginBottom: 2 },
   emergencySub: { fontFamily: "Inter_400Regular", fontSize: 11, color: "rgba(255,255,255,0.8)" },
   emergencyIconCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", padding: 24 },
+  modalContent: { width: "100%", borderRadius: 16, borderWidth: 1, padding: 24, alignItems: "center", gap: 10 },
+  successCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: "#22C55E", alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  successTitle: { fontFamily: "Inter_700Bold", fontSize: 18, textAlign: "center" },
+  successDesc: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center", marginBottom: 12 },
+  undoBtn: { width: "100%", paddingVertical: 14, borderRadius: 12, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  undoBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
 });
