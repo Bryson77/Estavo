@@ -57,7 +57,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
-    "expo-clipboard": "^56.0.4",
+    "expo-clipboard": "~8.0.8",
     "expo-updates": "~29.0.18",
     "react-compiler-runtime": "^19.0.0-beta-e993439-20250117",
     "react-native-qrcode-svg": "^6.3.21"
