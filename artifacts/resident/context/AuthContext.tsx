@@ -64,13 +64,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    // Invalidate Supabase session server-side first
+    if (token) {
+      try {
+        const { apiClient } = await import("../lib/api");
+        await apiClient.logout(token);
+      } catch {
+        // Never block logout on API failure
+      }
+    }
     await Promise.all([
       AsyncStorage.removeItem(TOKEN_KEY),
       AsyncStorage.removeItem(USER_KEY),
     ]);
     setToken(null);
     setUser(null);
-  }, []);
+  }, [token]);
+
 
   const refreshUser = useCallback(async () => {
     if (!token) return;

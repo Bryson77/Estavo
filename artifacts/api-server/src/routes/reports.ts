@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { supabaseApp } from "../lib/supabase.js";
+import { supabaseApp } from "../lib/supabase.js"; // kept for ticket count only
 import { requireAuth, type AuthRequest } from "../lib/auth.js";
 
 const router = Router();
@@ -25,7 +25,7 @@ function transformReport(row: any) {
 router.get("/reports", requireAuth, async (req: AuthRequest, res) => {
   const { estateId, unitId, role } = req.user!;
   try {
-    let query = supabaseApp
+    let query = req.supabaseClient!
       .from("maintenance_requests")
       .select("*")
       .eq("estate_id", estateId)
@@ -54,7 +54,7 @@ router.get("/reports", requireAuth, async (req: AuthRequest, res) => {
 router.get("/reports/:id", requireAuth, async (req: AuthRequest, res) => {
   const { estateId } = req.user!;
   try {
-    const { data: row, error } = await supabaseApp
+    const { data: row, error } = await req.supabaseClient!
       .from("maintenance_requests")
       .select("*")
       .eq("id", req.params.id)

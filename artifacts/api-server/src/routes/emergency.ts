@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { z } from "zod";
-import { supabaseApp } from "../lib/supabase.js";
 import { requireAuth, type AuthRequest } from "../lib/auth.js";
 
 const router = Router();
@@ -45,7 +44,7 @@ router.post("/emergency", requireAuth, async (req: AuthRequest, res) => {
 router.get("/emergency/history", requireAuth, async (req: AuthRequest, res) => {
   const { estateId, unitId, role } = req.user!;
   try {
-    let query = supabaseApp
+    let query = req.supabaseClient!
       .from("incidents")
       .select("id, incident_type, description, emergency_ref, status, created_at")
       .eq("estate_id", estateId)

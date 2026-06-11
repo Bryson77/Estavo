@@ -1,15 +1,29 @@
+import { supabase } from "./supabase";
+
 const API_BASE = import.meta.env.BASE_URL
   ? `${window.location.origin}/api`
   : "/api";
 
-async function apiFetch<T>(path: string, options: RequestInit & { token?: string } = {}): Promise<T> {
-  const { token, ...rest } = options;
+/** Gets the current platform-project access token from the active Supabase session. */
+async function getToken(): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
+
+async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = await getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(rest.headers as Record<string, string> ?? {}),
+    ...(options.headers as Record<string, string> ?? {}),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { ...rest, headers });
+
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? `Request failed: ${res.status}`);
   return data as T;
@@ -17,6 +31,7 @@ async function apiFetch<T>(path: string, options: RequestInit & { token?: string
 
 export interface Estate {
   id: string;
+  appEstateId: string;
   name: string;
   address?: string;
   unitCount: number;
@@ -45,14 +60,22 @@ export const platformApi = {
     apiFetch("/platform/estates"),
 
   createEstate: (data: Partial<Estate>): Promise<{ estate: Estate }> =>
-    apiFetch("/platform/estates", { method: "POST", body: JSON.stringify(data) }),
+    apiFetch("/platform/estates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
-  updateEstate: (id: string, data: Partial<Estate>): Promise<{ estate: Estate }> =>
-    apiFetch(`/platform/estates/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  updateEstate: (
+    id: string,
+    data: Partial<Estate>
+  ): Promise<{ success: boolean }> =>
+    apiFetch(`/platform/estates/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
 
   suspendEstate: (id: string): Promise<{ success: boolean }> =>
     apiFetch(`/platform/estates/${id}/suspend`, { method: "POST" }),
 
-  getStats: (): Promise<PlatformStats> =>
-    apiFetch("/platform/stats"),
+  getStats: (): Promise<PlatformStats> => apiFetch("/platform/stats"),
 };

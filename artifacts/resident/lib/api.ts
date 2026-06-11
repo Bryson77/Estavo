@@ -139,6 +139,6 @@ export const apiClient = {
   getContractors: (token: string) =>
     request<{ contractors: any[] }>("/contractors", { token }),
 
-  seedDatabase: () =>
-    request<any>("/seed", { method: "POST" }),
+  logout: (token: string) =>
+    request<{ success: boolean }>("/auth/logout", { method: "POST", token }),
 };

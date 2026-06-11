@@ -19,6 +19,7 @@ import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
 import { apiClient } from "@/lib/api";
+import ScreenHeader from "@/components/ScreenHeader";
 
 function StatCard({
   label,
@@ -152,26 +153,18 @@ export default function HomeScreen() {
   };
 
   const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : "?";
+  const subLabel = user
+    ? `RESIDENT · ${user.firstName?.toUpperCase()} ${user.lastName?.[0]?.toUpperCase()}.`
+    : "RESIDENT";
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      {/* Blue Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: topPad + 12 }]}>
-        <View style={styles.headerLeft}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
-          <View style={styles.headerInfo}>
-            <Text style={styles.headerSub}>
-              RESIDENT · {user?.firstName?.toUpperCase()} {user?.lastName?.charAt(0)?.toUpperCase()}.
-            </Text>
-            <Text style={styles.headerTitle}>{user?.estateName ?? "EstateHQ"}</Text>
-          </View>
-        </View>
-        <Pressable onPress={() => router.push("/(tabs)/settings" as any)} hitSlop={12} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-          <Ionicons name="settings-outline" size={22} color="#FFFFFF" />
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title={user?.estateName ?? "EstateHQ"}
+        subtitle={subLabel}
+        showAvatar
+        initials={initials}
+      />
 
       <ScrollView
         style={{ flex: 1 }}

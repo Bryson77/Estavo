@@ -6,6 +6,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -104,8 +105,7 @@ export default function GuestsScreen() {
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
-        refreshing={refreshing}
-        onScrollBeginDrag={() => {}}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {activeCodes.length === 0 && inactiveCodes.length === 0 ? (
           <View style={styles.empty}>

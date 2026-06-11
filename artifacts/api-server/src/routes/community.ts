@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { z } from "zod";
-import { supabaseApp } from "../lib/supabase.js";
 import { requireAuth, type AuthRequest } from "../lib/auth.js";
 
 const router = Router();
@@ -9,7 +8,7 @@ const router = Router();
 router.get("/community/posts", requireAuth, async (req: AuthRequest, res) => {
   const { estateId, userId } = req.user!;
   try {
-    const { data: rows, error } = await supabaseApp
+    const { data: rows, error } = await req.supabaseClient!
       .from("community_posts")
       .select("*, community_post_reactions(reaction_type, user_id), community_post_comments(id)")
       .eq("estate_id", estateId)
@@ -107,7 +106,7 @@ router.post("/community/posts/:id/react", requireAuth, async (req: AuthRequest, 
 router.get("/community/events", requireAuth, async (req: AuthRequest, res) => {
   const { estateId, userId } = req.user!;
   try {
-    const { data: rows, error } = await supabaseApp
+    const { data: rows, error } = await req.supabaseClient!
       .from("community_events")
       .select("*, event_rsvps(response, user_id)")
       .eq("estate_id", estateId)
@@ -160,7 +159,7 @@ router.post("/community/events/:id/rsvp", requireAuth, async (req: AuthRequest, 
 router.get("/community/broadcasts", requireAuth, async (req: AuthRequest, res) => {
   const { estateId, userId } = req.user!;
   try {
-    const { data: rows, error } = await supabaseApp
+    const { data: rows, error } = await req.supabaseClient!
       .from("notices")
       .select("*, broadcast_reads(user_id)")
       .eq("estate_id", estateId)

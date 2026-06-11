@@ -5,50 +5,55 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
-
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
+import ScreenHeader from "@/components/ScreenHeader";
 
-const HOLD_MS = 3000;
-const EMERGENCY_TYPES = [
-  { id: "security", label: "Security Threat", icon: "shield-outline", color: "#EF4444" },
-  { id: "medical", label: "Medical Emergency", icon: "medkit-outline", color: "#F59E0B" },
-  { id: "fire", label: "Fire / Smoke", icon: "flame-outline", color: "#F97316" },
-  { id: "crime", label: "Crime in Progress", icon: "warning-outline", color: "#DC2626" },
-];
+const HOLD_MS = 5000;
 
 export default function EmergencyScreen() {
   const colors = useColors();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
   const { triggerEmergency } = useApp();
 
-  const [selectedType, setSelectedType] = useState("security");
   const [isHolding, setIsHolding] = useState(false);
   const [triggered, setTriggered] = useState(false);
-  const [emergencyRef, setEmergencyRef] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [emergencyRef, setEmergencyRef] = useState<string | null>(null);
 
   const progress = useRef(new Animated.Value(0)).current;
   const animRef = useRef<Animated.CompositeAnimation | null>(null);
   const completedRef = useRef(false);
 
-  const topPad = Platform.OS === "web" ? 0 : insets.top;
+  // Pulsing ring animation when idle
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
 
   const startHold = useCallback(() => {
     if (triggered || loading || completedRef.current) return;
     setIsHolding(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    animRef.current = Animated.timing(progress, { toValue: 1, duration: HOLD_MS, useNativeDriver: false });
+    animRef.current = Animated.timing(progress, {
+      toValue: 1,
+      duration: HOLD_MS,
+      useNativeDriver: false,
+    });
     animRef.current.start(async ({ finished }) => {
       if (finished && !completedRef.current) {
         completedRef.current = true;
@@ -74,26 +79,36 @@ export default function EmergencyScreen() {
     if (completedRef.current) return;
     setIsHolding(false);
     animRef.current?.stop();
-    Animated.timing(progress, { toValue: 0, duration: 300, useNativeDriver: false }).start();
+    Animated.timing(progress, { toValue: 0, duration: 250, useNativeDriver: false }).start();
   }, [progress]);
 
   useEffect(() => () => { animRef.current?.stop(); }, []);
 
-  const ring = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 130] });
-  const ringOpacity = progress.interpolate({ inputRange: [0, 0.1], outputRange: [0, 1] });
+  // Animated ring radius (0 → 90 extra px on each side)
+  const ringSize = progress.interpolate({ inputRange: [0, 1], outputRange: [160, 280] });
+  const ringOpacity = progress.interpolate({ inputRange: [0, 0.05, 1], outputRange: [0, 0.5, 0] });
 
+  const initials = user
+    ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase()
+    : "?";
+  const subLabel = user
+    ? `RESIDENT · ${user.firstName?.toUpperCase()} ${user.lastName?.[0]?.toUpperCase()}.`
+    : "RESIDENT";
+
+  // ── Confirmed state ──────────────────────────────────────────────────
   if (triggered && emergencyRef) {
     return (
-      <View style={[styles.screen, { backgroundColor: "#1A0000" }]}>
-        <View style={[styles.header, { backgroundColor: "#8B1C1C", paddingTop: topPad + 12 }]}>
-          <Pressable onPress={() => router.back()} hitSlop={12} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-            <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-          </Pressable>
-        </View>
+      <View style={[styles.screen, { backgroundColor: "#0D0000" }]}>
+        <ScreenHeader
+          title="Emergency"
+          subtitle={subLabel}
+          showBack
+          headerBg="#7B1111"
+        />
         <View style={styles.confirmedBody}>
           <View style={styles.sirensRow}>
             <Ionicons name="alarm" size={36} color="#EF4444" />
-            <Ionicons name="alarm" size={50} color="#EF4444" />
+            <Ionicons name="alarm" size={52} color="#EF4444" />
             <Ionicons name="alarm" size={36} color="#EF4444" />
           </View>
           <Text style={styles.confirmedTitle}>ALERT SENT</Text>
@@ -104,82 +119,81 @@ export default function EmergencyScreen() {
           <Text style={styles.confirmedUnit}>
             Unit {user?.unitNumber} · {user?.estateName}
           </Text>
-          <View style={styles.confirmedActions}>
-            <Pressable
-              style={[styles.actionBtn, { backgroundColor: "#8B1C1C" }]}
-              onPress={() => {
-                Alert.alert("Cancel Alert", "This will mark the alert as a false alarm.", [
-                  { text: "Keep Active", style: "cancel" },
-                  { text: "Cancel Alert", style: "destructive", onPress: () => router.back() },
-                ]);
-              }}
-            >
-              <Text style={styles.actionBtnText}>Cancel (False Alarm)</Text>
-            </Pressable>
-          </View>
+          <Pressable
+            style={styles.cancelBtn}
+            onPress={() => {
+              Alert.alert("Cancel Alert", "This will mark the alert as a false alarm.", [
+                { text: "Keep Active", style: "cancel" },
+                { text: "Cancel Alert", style: "destructive", onPress: () => router.back() },
+              ]);
+            }}
+          >
+            <Text style={styles.cancelBtnText}>Cancel (False Alarm)</Text>
+          </Pressable>
         </View>
       </View>
     );
   }
 
+  // ── Main screen ──────────────────────────────────────────────────────
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: "#8B1C1C", paddingTop: topPad + 12 }]}>
-        <View style={styles.headerLeft}>
-          <Pressable onPress={() => router.back()} hitSlop={12} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-            <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-          </Pressable>
-          <View>
-            <Text style={styles.headerLabel}>SOS</Text>
-            <Text style={styles.headerTitle}>Emergency</Text>
-          </View>
-        </View>
-      </View>
+      <ScreenHeader
+        title="Emergency"
+        subtitle="ESTATEHQ"
+        showBack
+        showAvatar={false}
+        headerBg={colors.primary}
+      />
 
       <View style={styles.body}>
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>SELECT TYPE</Text>
-        <View style={styles.typeGrid}>
-          {EMERGENCY_TYPES.map(t => (
-            <Pressable
-              key={t.id}
-              style={({ pressed }) => [
-                styles.typeBtn,
-                {
-                  backgroundColor: selectedType === t.id ? t.color + "18" : colors.card,
-                  borderColor: selectedType === t.id ? t.color : colors.border,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}
-              onPress={() => { setSelectedType(t.id); Haptics.selectionAsync(); }}
-            >
-              <Ionicons name={t.icon as any} size={20} color={selectedType === t.id ? t.color : colors.mutedForeground} />
-              <Text style={[styles.typeBtnText, { color: selectedType === t.id ? t.color : colors.mutedForeground }]}>
-                {t.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={[styles.holdInstruction, { color: colors.mutedForeground }]}>
-          Hold the button for 3 seconds to alert security
+        <Text style={[styles.instruction, { color: colors.mutedForeground }]}>
+          Hold the button for 5 seconds to alert all security on duty.
         </Text>
 
         <View style={styles.holdArea}>
+          {/* Animated expanding ring on press */}
           <Animated.View
-            style={[styles.holdRing, { width: ring, height: ring, borderRadius: 200, opacity: ringOpacity, borderColor: "#EF4444" }]}
+            style={[
+              styles.ringBase,
+              {
+                width: ringSize,
+                height: ringSize,
+                borderRadius: 200,
+                opacity: ringOpacity,
+              },
+            ]}
+            pointerEvents="none"
           />
+
+          {/* Idle pulse ring */}
+          {!isHolding && !loading && (
+            <Animated.View
+              style={[
+                styles.pulseRing,
+                { transform: [{ scale: pulseAnim }] },
+              ]}
+              pointerEvents="none"
+            />
+          )}
+
           <Pressable onPressIn={startHold} onPressOut={stopHold}>
-            <Animated.View style={[styles.holdCircle, { backgroundColor: isHolding || loading ? "#DC2626" : "#8B1C1C" }]}>
-              <Ionicons name="alarm-outline" size={34} color="#FFFFFF" />
-              <Text style={styles.holdCircleLabel}>
-                {loading ? "Alerting..." : isHolding ? "Hold..." : "SOS"}
-              </Text>
+            <Animated.View
+              style={[
+                styles.holdCircle,
+                {
+                  backgroundColor: isHolding ? "#DC2626" : "#EF4444",
+                  transform: [{ scale: isHolding ? 1.04 : 1 }],
+                },
+              ]}
+            >
+              <Ionicons name="alarm-outline" size={44} color="#FFFFFF" />
             </Animated.View>
           </Pressable>
         </View>
 
-        <Text style={[styles.disclaimer, { color: colors.mutedForeground }]}>
-          Only use this in genuine emergencies.{"\n"}False alarms may result in disciplinary action.
+        <Text style={[styles.holdLabel, { color: "#EF4444" }]}>
+          {loading ? "Alerting…" : isHolding ? "Hold…" : "Hold"}
         </Text>
       </View>
     </View>
@@ -188,51 +202,71 @@ export default function EmergencyScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
-    paddingHorizontal: 18,
-    paddingBottom: 12,
-  },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  headerLabel: { fontFamily: "Inter_500Medium", fontSize: 10, color: "rgba(255,255,255,0.75)", letterSpacing: 1 },
-  headerTitle: { fontFamily: "Inter_700Bold", fontSize: 18, color: "#FFFFFF" },
-  body: { flex: 1, padding: 20 },
-  sectionLabel: { fontFamily: "Inter_500Medium", fontSize: 10, letterSpacing: 1, marginBottom: 10 },
-  typeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 28 },
-  typeBtn: {
-    flexDirection: "row",
+  body: {
+    flex: 1,
     alignItems: "center",
-    gap: 7,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    minWidth: "47%",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    gap: 0,
   },
-  typeBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
-  holdInstruction: { fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", marginBottom: 32, lineHeight: 20 },
-  holdArea: { alignItems: "center", justifyContent: "center", height: 180, marginBottom: 32 },
-  holdRing: {
+  instruction: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 40,
+  },
+  holdArea: {
+    width: 280,
+    height: 280,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ringBase: {
     position: "absolute",
     borderWidth: 2,
     borderColor: "#EF4444",
   },
+  pulseRing: {
+    position: "absolute",
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    borderWidth: 1.5,
+    borderColor: "rgba(239,68,68,0.3)",
+    backgroundColor: "rgba(239,68,68,0.05)",
+  },
   holdCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
+    shadowColor: "#EF4444",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 12,
   },
-  holdCircleLabel: { fontFamily: "Inter_700Bold", fontSize: 14, color: "#FFFFFF" },
-  disclaimer: { fontFamily: "Inter_400Regular", fontSize: 12, textAlign: "center", lineHeight: 18 },
-  confirmedBody: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
+  holdLabel: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
+    marginTop: 20,
+    letterSpacing: 0.5,
+  },
+  // Confirmed state
+  confirmedBody: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    gap: 12,
+  },
   sirensRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   confirmedTitle: { fontFamily: "Inter_700Bold", fontSize: 32, color: "#EF4444", letterSpacing: 2 },
-  confirmedRef: { fontFamily: "Inter_500Medium", fontSize: 14, color: "#EF444490" },
+  confirmedRef: { fontFamily: "Inter_500Medium", fontSize: 13, color: "#EF444480" },
   confirmedDesc: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#FFFFFF", textAlign: "center", lineHeight: 22 },
-  confirmedUnit: { fontFamily: "Inter_500Medium", fontSize: 13, color: "#FFFFFF88" },
-  confirmedActions: { marginTop: 20, width: "100%" },
-  actionBtn: { borderRadius: 12, paddingVertical: 14, alignItems: "center" },
-  actionBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#FFFFFF" },
+  confirmedUnit: { fontFamily: "Inter_500Medium", fontSize: 12, color: "#FFFFFF66" },
+  cancelBtn: { marginTop: 20, backgroundColor: "#7B1111", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32 },
+  cancelBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#FFFFFF" },
 });

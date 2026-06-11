@@ -194,4 +194,16 @@ router.get("/auth/me", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+// POST /auth/logout — invalidates the Supabase session server-side
+router.post("/auth/logout", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    // req.supabaseClient is already scoped to the user's JWT — signOut invalidates the refresh token
+    await req.supabaseClient!.auth.signOut();
+  } catch {
+    // Never block logout — client will clear local storage regardless
+  }
+  res.json({ success: true });
+});
+
 export default router;
+

@@ -1,11 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
 
-const appUrl = process.env.SUPABASE_APP_URL;
+const appUrl = process.env.SUPABASE_APP_URL || process.env.NEXT_PUBLIC_SUPABASE_APP_URL;
 const appServiceKey = process.env.SUPABASE_APP_SERVICE_ROLE_KEY;
-const appAnonKey = process.env.SUPABASE_APP_ANON_KEY;
+const appAnonKey = process.env.SUPABASE_APP_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_APP_ANON_KEY;
 
-const platformUrl = process.env.SUPABASE_PLATFORM_URL;
+const platformUrl = process.env.SUPABASE_PLATFORM_URL || process.env.NEXT_PUBLIC_SUPABASE_PLATFORM_URL;
 const platformServiceKey = process.env.SUPABASE_PLATFORM_SERVICE_ROLE_KEY;
 
 if (!appUrl || !appServiceKey || !appAnonKey) {
