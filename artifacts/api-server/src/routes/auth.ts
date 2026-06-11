@@ -1,15 +1,9 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { users, estates } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
-import { signToken, requireAuth, type AuthRequest } from "../lib/auth.js";
 import { z } from "zod";
+import { supabaseApp, supabaseAppAnon } from "../lib/supabase.js";
+import { requireAuth, type AuthRequest } from "../lib/auth.js";
 
 const router = Router();
-
-function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
 
 const requestOtpSchema = z.object({
   email: z.string().email(),
@@ -17,153 +11,185 @@ const requestOtpSchema = z.object({
 
 const verifyOtpSchema = z.object({
   email: z.string().email(),
-  otp: z.string().length(6),
-});
+  otp: z.string().length(6).optional(),
+  token: z.string().length(6).optional(),
+}).refine(d => d.otp ?? d.token, { message: "otp or token required" });
 
+// POST /auth/request-otp
+// Checks email exists in profiles, then asks Supabase Auth to email a 6-digit OTP.
 router.post("/auth/request-otp", async (req, res) => {
   const parsed = requestOtpSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid email" });
+    res.status(400).json({ error: "Invalid email address" });
     return;
   }
   const { email } = parsed.data;
 
   try {
-    const user = await db.query.users.findFirst({
-      where: eq(users.email, email.toLowerCase()),
-    });
+    const { data: profile } = await supabaseApp
+      .from("profiles")
+      .select("id, is_active")
+      .eq("email", email.toLowerCase())
+      .maybeSingle();
 
-    if (!user) {
+    if (!profile) {
       res.status(404).json({ error: "No account found with this email. Contact your estate manager." });
       return;
     }
 
-    if (user.status !== "active") {
+    if (!profile.is_active) {
       res.status(403).json({ error: "Your account has been suspended. Contact your estate manager." });
       return;
     }
 
-    const otp = generateOtp();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const { error } = await supabaseAppAnon.auth.signInWithOtp({
+      email: email.toLowerCase(),
+      options: { shouldCreateUser: false },
+    });
 
-    await db.update(users)
-      .set({ otpCode: otp, otpExpiresAt: expiresAt })
-      .where(eq(users.id, user.id));
+    if (error) {
+      console.error("[auth/request-otp] Supabase error:", error.message);
+      res.status(500).json({ error: "Failed to send sign-in code. Please try again." });
+      return;
+    }
 
-    console.log(`[DEV] OTP for ${email}: ${otp}`);
-
-    res.json({ message: "OTP sent to your email.", devOtp: process.env.NODE_ENV === "development" ? otp : undefined });
+    res.json({ message: "A sign-in code has been sent to your email." });
   } catch (err) {
-    console.error(err);
+    console.error("[auth/request-otp]", err);
     res.status(500).json({ error: "Failed to send OTP" });
   }
 });
 
+// POST /auth/verify-otp
+// Verifies the 6-digit code with Supabase Auth and returns a session token.
+// Accepts both `otp` (frontend field name) and `token` (Supabase field name).
 router.post("/auth/verify-otp", async (req, res) => {
   const parsed = verifyOtpSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request" });
+    res.status(400).json({ error: "Invalid request — email and 6-digit code required" });
     return;
   }
-  const { email, otp } = parsed.data;
+
+  const email = parsed.data.email.toLowerCase();
+  const otpCode = (parsed.data.otp ?? parsed.data.token) as string;
 
   try {
-    const user = await db.query.users.findFirst({
-      where: eq(users.email, email.toLowerCase()),
+    const { data, error } = await supabaseAppAnon.auth.verifyOtp({
+      email,
+      token: otpCode,
+      type: "email",
     });
 
-    if (!user) {
-      res.status(404).json({ error: "User not found" });
+    if (error || !data.session) {
+      res.status(401).json({ error: "Invalid or expired code. Request a new one." });
       return;
     }
 
-    const devBypass = process.env.NODE_ENV === "development" && otp === "123456";
+    const accessToken = data.session.access_token;
+    const userId = data.user!.id;
 
-    if (!devBypass) {
-      if (!user.otpCode || user.otpCode !== otp) {
-        res.status(401).json({ error: "Invalid OTP code" });
-        return;
-      }
-      if (!user.otpExpiresAt || new Date(user.otpExpiresAt) < new Date()) {
-        res.status(401).json({ error: "OTP has expired. Request a new one." });
-        return;
-      }
+    const { data: profile } = await supabaseApp
+      .from("profiles")
+      .select("id, estate_id, unit_id, role, full_name, email, phone, is_active")
+      .eq("id", userId)
+      .single();
+
+    if (!profile) {
+      res.status(404).json({ error: "Profile not found" });
+      return;
     }
 
-    await db.update(users)
-      .set({
-        otpCode: null,
-        otpExpiresAt: null,
-        firstLogin: false,
-        lastLoginAt: new Date(),
-      })
-      .where(eq(users.id, user.id));
+    let unitNumber: string | null = null;
+    if (profile.unit_id) {
+      const { data: unit } = await supabaseApp
+        .from("units")
+        .select("unit_number")
+        .eq("id", profile.unit_id)
+        .single();
+      unitNumber = unit?.unit_number ?? null;
+    }
 
-    const estate = await db.query.estates.findFirst({
-      where: eq(estates.id, user.estateId),
-    });
+    const { data: estate } = await supabaseApp
+      .from("estates")
+      .select("name, address")
+      .eq("id", profile.estate_id)
+      .single();
 
-    const token = signToken({
-      userId: user.id,
-      estateId: user.estateId,
-      role: user.role,
-      email: user.email,
-      unitNumber: user.unitNumber,
-      firstName: user.firstName,
-      lastName: user.lastName,
-    });
+    const parts = (profile.full_name ?? "").trim().split(/\s+/);
+    const firstName = parts[0] ?? "";
+    const lastName = parts.slice(1).join(" ");
 
     res.json({
-      token,
+      token: accessToken,
       user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        unitNumber: user.unitNumber,
-        accountStanding: user.accountStanding,
-        estateId: user.estateId,
+        id: userId,
+        firstName,
+        lastName,
+        email: profile.email,
+        role: profile.role,
+        unitNumber,
+        estateId: profile.estate_id,
         estateName: estate?.name ?? "",
         estateAddress: estate?.address ?? "",
+        accountStanding: "good",
+        phone: (profile as any).phone ?? null,
       },
     });
   } catch (err) {
-    console.error(err);
+    console.error("[auth/verify-otp]", err);
     res.status(500).json({ error: "Verification failed" });
   }
 });
 
+// GET /auth/me — returns fresh profile data for the authenticated user
 router.get("/auth/me", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, req.user!.userId),
-    });
+    const { data: profile } = await supabaseApp
+      .from("profiles")
+      .select("id, estate_id, unit_id, role, full_name, email, phone, is_active")
+      .eq("id", req.user!.userId)
+      .single();
 
-    if (!user) {
-      res.status(404).json({ error: "User not found" });
+    if (!profile) {
+      res.status(404).json({ error: "Profile not found" });
       return;
     }
 
-    const estate = await db.query.estates.findFirst({
-      where: eq(estates.id, user.estateId),
-    });
+    let unitNumber: string | null = null;
+    if (profile.unit_id) {
+      const { data: unit } = await supabaseApp
+        .from("units")
+        .select("unit_number")
+        .eq("id", profile.unit_id)
+        .single();
+      unitNumber = unit?.unit_number ?? null;
+    }
+
+    const { data: estate } = await supabaseApp
+      .from("estates")
+      .select("name, address")
+      .eq("id", profile.estate_id)
+      .single();
+
+    const parts = (profile.full_name ?? "").trim().split(/\s+/);
+    const firstName = parts[0] ?? "";
+    const lastName = parts.slice(1).join(" ");
 
     res.json({
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      role: user.role,
-      unitNumber: user.unitNumber,
-      accountStanding: user.accountStanding,
-      estateId: user.estateId,
+      id: profile.id,
+      firstName,
+      lastName,
+      email: profile.email,
+      role: profile.role,
+      unitNumber,
+      estateId: profile.estate_id,
       estateName: estate?.name ?? "",
       estateAddress: estate?.address ?? "",
-      phone: user.phone,
+      accountStanding: "good",
+      phone: (profile as any).phone ?? null,
     });
   } catch (err) {
-    console.error(err);
+    console.error("[auth/me]", err);
     res.status(500).json({ error: "Failed to load profile" });
   }
 });

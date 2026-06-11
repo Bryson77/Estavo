@@ -8,7 +8,6 @@ import communityRouter from "./community.js";
 import amenitiesRouter from "./amenities.js";
 import emergencyRouter from "./emergency.js";
 import contractorsRouter from "./contractors.js";
-import seedRouter from "./seed.js";
 
 const router: IRouter = Router();
 
@@ -21,6 +20,5 @@ router.use(communityRouter);
 router.use(amenitiesRouter);
 router.use(emergencyRouter);
 router.use(contractorsRouter);
-router.use(seedRouter);
 
 export default router;

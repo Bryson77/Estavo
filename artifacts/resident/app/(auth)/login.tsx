@@ -1,9 +1,9 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiClient } from "@/lib/api";
@@ -32,7 +33,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const res = await apiClient.requestOtp(trimmed);
+      await apiClient.requestOtp(trimmed);
       router.push({ pathname: "/(auth)/verify", params: { email: trimmed } });
     } catch (err: any) {
       Alert.alert("Error", err.message ?? "Failed to send OTP. Please try again.");
@@ -46,22 +47,21 @@ export default function LoginScreen() {
       style={[styles.screen, { backgroundColor: colors.background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={[styles.header, { paddingTop: insets.top + 20, backgroundColor: colors.primary }]}>
-        <View style={styles.logoRow}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="business" size={22} color={colors.primary} />
-          </View>
-          <View>
-            <Text style={styles.logoLabel}>ESTATEHQ</Text>
-            <Text style={styles.logoSub}>Resident App</Text>
-          </View>
-        </View>
+      <View style={[styles.safeTop, { paddingTop: insets.top, backgroundColor: colors.primary }]} />
+
+      <View style={styles.logoSection}>
+        <Image
+          source={require("../../assets/images/logo.png")}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
+        <Text style={[styles.logoSub, { color: colors.mutedForeground }]}>Resident App</Text>
       </View>
 
       <View style={styles.body}>
         <Text style={[styles.title, { color: colors.foreground }]}>Welcome back</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Enter your email address to receive a one-time code
+          Enter your email address to receive a one-time sign-in code
         </Text>
 
         <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card }]}>
@@ -106,39 +106,26 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
-    paddingHorizontal: 24,
-    paddingBottom: 28,
-  },
-  logoRow: {
-    flexDirection: "row",
+  safeTop: { width: "100%" },
+  logoSection: {
     alignItems: "center",
-    gap: 12,
-    marginTop: 8,
+    paddingTop: 32,
+    paddingBottom: 8,
   },
-  logoCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoLabel: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 15,
-    color: "#FFFFFF",
-    letterSpacing: 1.2,
+  logoImage: {
+    width: 180,
+    height: 100,
   },
   logoSub: {
     fontFamily: "Inter_400Regular",
-    fontSize: 11,
-    color: "rgba(255,255,255,0.75)",
+    fontSize: 12,
+    letterSpacing: 0.5,
+    marginTop: 2,
   },
   body: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 36,
+    paddingTop: 24,
   },
   title: {
     fontFamily: "Inter_700Bold",

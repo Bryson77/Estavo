@@ -1,1 +1,3 @@
 - [Expo on Replit setup](expo-replit-setup.md) — how to register, run, and present the Expo artifact so it shows as a mobile frame (not a web page)
+- [Supabase Node 20 WebSocket](supabase-node20-ws.md) — Node 20 needs `ws` pkg + `realtime: { transport: ws }` in every createClient call or server crashes on startup
+- [Supabase server auth pattern](supabase-server-auth.md) — requireAuth: verify with anon client getUser(), profile lookup with service role, per-request RLS client via Authorization header

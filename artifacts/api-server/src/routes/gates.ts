@@ -1,27 +1,27 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { gateLogs, estates } from "@workspace/db";
-import { eq, desc, and } from "drizzle-orm";
-import { requireAuth, type AuthRequest } from "../lib/auth.js";
 import { z } from "zod";
+import { supabaseApp } from "../lib/supabase.js";
+import { requireAuth, type AuthRequest } from "../lib/auth.js";
 
 const router = Router();
 
+// GET /gates — return the estate's gate list from the estates.gates jsonb column
 router.get("/gates", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const estate = await db.query.estates.findFirst({
-      where: eq(estates.id, req.user!.estateId),
-    });
+    const { data: estate, error } = await supabaseApp
+      .from("estates")
+      .select("gates")
+      .eq("id", req.user!.estateId)
+      .single();
 
-    if (!estate) {
+    if (error || !estate) {
       res.status(404).json({ error: "Estate not found" });
       return;
     }
 
-    const gates = (estate.gates as any[]) ?? [];
-    res.json({ gates });
+    res.json({ gates: estate.gates ?? [] });
   } catch (err) {
-    console.error(err);
+    console.error("[gates GET]", err);
     res.status(500).json({ error: "Failed to load gates" });
   }
 });
@@ -29,9 +29,10 @@ router.get("/gates", requireAuth, async (req: AuthRequest, res) => {
 const triggerSchema = z.object({
   gateId: z.string(),
   gateLabel: z.string(),
-  direction: z.enum(["entry", "exit"]).optional(),
+  direction: z.enum(["entry", "exit"]).default("entry"),
 });
 
+// POST /gates/trigger — log a gate trigger and return a logId for undo
 router.post("/gates/trigger", requireAuth, async (req: AuthRequest, res) => {
   const parsed = triggerSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -40,29 +41,45 @@ router.post("/gates/trigger", requireAuth, async (req: AuthRequest, res) => {
   }
 
   const { gateId, gateLabel, direction } = parsed.data;
-  const { userId, estateId, role, unitNumber, firstName, lastName } = req.user!;
+  const { estateId, unitId, firstName, lastName } = req.user!;
+  const hardwareResponseMs = Math.floor(Math.random() * 200) + 50;
 
   try {
-    const [log] = await db.insert(gateLogs).values({
-      estateId,
-      gateId,
-      gateLabel,
-      triggeredBy: userId,
-      triggerType: role as any,
-      unitNumber: unitNumber ?? undefined,
-      actorName: `${firstName} ${lastName}`,
-      direction: direction ?? "entry",
-      status: "success",
-      hardwareResponseMs: Math.floor(Math.random() * 200) + 50,
-    }).returning();
+    const { data: row, error } = await req.supabaseClient!
+      .from("gate_log")
+      .insert({
+        estate_id: estateId,
+        gate_id: gateId,
+        gate_label: gateLabel,
+        direction,
+        status: "success",
+        entry_type: "resident",
+        unit_id: unitId ?? null,
+        guest_name: `${firstName} ${lastName}`.trim() || null,
+        hardware_response_ms: hardwareResponseMs,
+        entered_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
 
-    res.json({ success: true, logId: log.id, undoWindowSeconds: 5 });
+    if (error) {
+      console.error("[gates/trigger]", error);
+      res.status(500).json({ error: "Failed to trigger gate" });
+      return;
+    }
+
+    res.json({
+      success: true,
+      logId: row.id,
+      undoWindowSeconds: 10,
+    });
   } catch (err) {
-    console.error(err);
+    console.error("[gates/trigger]", err);
     res.status(500).json({ error: "Failed to trigger gate" });
   }
 });
 
+// POST /gates/undo — cancel a gate trigger within the undo window
 router.post("/gates/undo", requireAuth, async (req: AuthRequest, res) => {
   const { logId } = req.body as { logId?: string };
   if (!logId) {
@@ -71,29 +88,67 @@ router.post("/gates/undo", requireAuth, async (req: AuthRequest, res) => {
   }
 
   try {
-    await db.update(gateLogs)
-      .set({ status: "cancelled" })
-      .where(and(eq(gateLogs.id, logId), eq(gateLogs.estateId, req.user!.estateId)));
+    const { data, error } = await req.supabaseClient!
+      .from("gate_log")
+      .update({ status: "cancelled" })
+      .eq("id", logId)
+      .eq("estate_id", req.user!.estateId)
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      res.status(404).json({ error: "Log entry not found or cannot be undone" });
+      return;
+    }
 
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to undo gate action" });
+    console.error("[gates/undo]", err);
+    res.status(500).json({ error: "Failed to undo gate trigger" });
   }
 });
 
+// GET /gates/activity — recent gate activity for the user's unit (or whole estate for staff)
 router.get("/gates/activity", requireAuth, async (req: AuthRequest, res) => {
+  const { estateId, unitId, role } = req.user!;
+
   try {
-    const logs = await db
-      .select()
-      .from(gateLogs)
-      .where(and(eq(gateLogs.estateId, req.user!.estateId), eq(gateLogs.triggeredBy, req.user!.userId)))
-      .orderBy(desc(gateLogs.createdAt))
+    let query = req.supabaseClient!
+      .from("gate_log")
+      .select("*")
+      .eq("estate_id", estateId)
+      .order("entered_at", { ascending: false })
       .limit(50);
+
+    // Residents see only their own unit's log entries
+    if (role === "resident" && unitId) {
+      query = query.eq("unit_id", unitId);
+    }
+
+    const { data: rows, error } = await query;
+
+    if (error) {
+      console.error("[gates/activity]", error);
+      res.status(500).json({ error: "Failed to load gate activity" });
+      return;
+    }
+
+    const logs = (rows ?? []).map(row => ({
+      id: row.id,
+      gateId: row.gate_id,
+      gateLabel: row.gate_label,
+      direction: row.direction,
+      status: row.status,
+      entryType: row.entry_type,
+      guestName: row.guest_name ?? null,
+      unitId: row.unit_id ?? null,
+      hardwareResponseMs: row.hardware_response_ms,
+      createdAt: row.entered_at,
+    }));
 
     res.json({ logs });
   } catch (err) {
-    console.error(err);
+    console.error("[gates/activity]", err);
     res.status(500).json({ error: "Failed to load gate activity" });
   }
 });

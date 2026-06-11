@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 const appUrl = process.env.SUPABASE_APP_URL;
 const appServiceKey = process.env.SUPABASE_APP_SERVICE_ROLE_KEY;
@@ -15,17 +16,23 @@ if (!platformUrl || !platformServiceKey) {
   throw new Error("Missing SUPABASE_PLATFORM_URL or SUPABASE_PLATFORM_SERVICE_ROLE_KEY");
 }
 
+// Node 20 lacks native WebSocket — pass the `ws` package as realtime transport.
+const realtimeOpts = { transport: ws } as any;
+
 // Service-role client — bypasses RLS. Use ONLY for server-side admin/cross-estate ops.
 export const supabaseApp = createClient(appUrl, appServiceKey, {
   auth: { persistSession: false },
+  realtime: realtimeOpts,
 });
 
 // Anon client — used to call Supabase Auth (signInWithOtp, verifyOtp, getUser)
 export const supabaseAppAnon = createClient(appUrl, appAnonKey, {
   auth: { persistSession: false },
+  realtime: realtimeOpts,
 });
 
 // Platform project client (billing / superadmin)
 export const supabasePlatform = createClient(platformUrl, platformServiceKey, {
   auth: { persistSession: false },
+  realtime: realtimeOpts,
 });
