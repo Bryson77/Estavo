@@ -26,6 +26,27 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [magicLoading, setMagicLoading] = useState(false);
+
+  const handleMagicLink = async () => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed || !trimmed.includes("@")) {
+      Alert.alert("Invalid email", "Please enter a valid email address.");
+      return;
+    }
+    setMagicLoading(true);
+    try {
+      await apiClient.requestOtp(trimmed);
+      Alert.alert(
+        "Check your inbox",
+        "We've sent a magic link to your email. Click it to log in securely."
+      );
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Failed to send magic link.");
+    } finally {
+      setMagicLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     const trimmed = email.trim().toLowerCase();
@@ -41,7 +62,6 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const data = await apiClient.login(trimmed, password);
-      // Wait a moment for setSession to process
       setTimeout(() => {
         setSession(data.token, data.user);
       }, 100);
@@ -71,10 +91,10 @@ export default function LoginScreen() {
       <View style={styles.body}>
         <Text style={[styles.title, { color: colors.foreground }]}>Welcome back</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Log in with your email and password
+          Enter your email to get started
         </Text>
 
-        <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card, marginBottom: 24 }]}>
           <Ionicons name="mail-outline" size={18} color={colors.mutedForeground} />
           <TextInput
             style={[styles.input, { color: colors.foreground }]}
@@ -88,6 +108,27 @@ export default function LoginScreen() {
             autoComplete="email"
             returnKeyType="next"
           />
+        </View>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.btn,
+            { backgroundColor: colors.primary, opacity: pressed || loading || magicLoading ? 0.85 : 1 },
+          ]}
+          onPress={handleMagicLink}
+          disabled={loading || magicLoading}
+        >
+          {magicLoading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.btnText}>Send Magic Link</Text>
+          )}
+        </Pressable>
+
+        <View style={styles.dividerRow}>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>OR</Text>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
         </View>
 
         <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card, marginBottom: 8 }]}>
@@ -111,22 +152,22 @@ export default function LoginScreen() {
           onPress={() => router.push("/(auth)/setup-password")}
         >
           <Text style={[styles.forgotText, { color: colors.primary }]}>
-            First time logging in? / Forgot password
+            Forgot password?
           </Text>
         </Pressable>
 
         <Pressable
           style={({ pressed }) => [
-            styles.btn,
-            { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+            styles.secondaryBtn,
+            { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed || loading || magicLoading ? 0.85 : 1 },
           ]}
           onPress={handleLogin}
-          disabled={loading}
+          disabled={loading || magicLoading}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.foreground} />
           ) : (
-            <Text style={styles.btnText}>Log In</Text>
+            <Text style={[styles.secondaryBtnText, { color: colors.foreground }]}>Login with password</Text>
           )}
         </Pressable>
 

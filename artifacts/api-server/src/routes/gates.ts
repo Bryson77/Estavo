@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { supabaseApp } from "../lib/supabase.js";
 import { requireAuth, type AuthRequest } from "../lib/auth.js";
+import { gateLimiter } from "../middlewares/rateLimiter.js";
 
 const router = Router();
 
@@ -33,7 +34,7 @@ const triggerSchema = z.object({
 });
 
 // POST /gates/trigger — log a gate trigger and return a logId for undo
-router.post("/gates/trigger", requireAuth, async (req: AuthRequest, res) => {
+router.post("/gates/trigger", requireAuth, gateLimiter, async (req: AuthRequest, res) => {
   const parsed = triggerSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request" });

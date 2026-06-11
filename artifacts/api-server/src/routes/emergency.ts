@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, type AuthRequest } from "../lib/auth.js";
+import { emergencyLimiter } from "../middlewares/rateLimiter.js";
 
 const router = Router();
 
 // POST /emergency — resident triggers a security alert
-router.post("/emergency", requireAuth, async (req: AuthRequest, res) => {
+router.post("/emergency", requireAuth, emergencyLimiter, async (req: AuthRequest, res) => {
   const { estateId, unitId, userId, firstName, lastName } = req.user!;
   try {
     const ref = `EMG-${Date.now().toString(36).toUpperCase()}`;

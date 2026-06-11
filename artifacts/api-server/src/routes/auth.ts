@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { supabaseApp, supabaseAppAnon } from "../lib/supabase.js";
 import { requireAuth, type AuthRequest } from "../lib/auth.js";
+import { authLimiter } from "../middlewares/rateLimiter.js";
 
 const router = Router();
 
@@ -21,8 +22,9 @@ const loginSchema = z.object({
 });
 
 // POST /auth/request-otp
+// POST /auth/request-otp
 // Checks email exists in profiles, then asks Supabase Auth to email a 6-digit OTP.
-router.post("/auth/request-otp", async (req, res) => {
+router.post("/auth/request-otp", authLimiter, async (req, res) => {
   const parsed = requestOtpSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid email address" });
@@ -70,7 +72,7 @@ router.post("/auth/request-otp", async (req, res) => {
 
 // POST /auth/request-password-setup
 // Checks email exists, then sends a password reset magic link.
-router.post("/auth/request-password-setup", async (req, res) => {
+router.post("/auth/request-password-setup", authLimiter, async (req, res) => {
   const parsed = requestOtpSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid email address" });
@@ -200,8 +202,9 @@ router.get("/auth/reset-password", (req, res) => {
 
 // POST /auth/verify-otp
 // Verifies the 6-digit code with Supabase Auth and returns a session token.
+// Verifies the 6-digit code with Supabase Auth and returns a session token.
 // Accepts both `otp` (frontend field name) and `token` (Supabase field name).
-router.post("/auth/verify-otp", async (req, res) => {
+router.post("/auth/verify-otp", authLimiter, async (req, res) => {
   const parsed = verifyOtpSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request — email and 6-digit code required" });
@@ -226,32 +229,19 @@ router.post("/auth/verify-otp", async (req, res) => {
     const accessToken = data.session.access_token;
     const userId = data.user!.id;
 
-    const { data: profile } = await supabaseApp
+    const { data: profile, error: profileErr } = await supabaseApp
       .from("profiles")
-      .select("id, estate_id, unit_id, role, full_name, email, phone, is_active")
+      .select("id, estate_id, unit_id, role, full_name, email, phone, is_active, estates(name, address), units(unit_number)")
       .eq("id", userId)
       .single();
 
-    if (!profile) {
+    if (profileErr || !profile) {
       res.status(404).json({ error: "Profile not found" });
       return;
     }
 
-    let unitNumber: string | null = null;
-    if (profile.unit_id) {
-      const { data: unit } = await supabaseApp
-        .from("units")
-        .select("unit_number")
-        .eq("id", profile.unit_id)
-        .single();
-      unitNumber = unit?.unit_number ?? null;
-    }
-
-    const { data: estate } = await supabaseApp
-      .from("estates")
-      .select("name, address")
-      .eq("id", profile.estate_id)
-      .single();
+    const unitNumber = profile.units?.unit_number ?? null;
+    const estate = profile.estates ?? {};
 
     const parts = (profile.full_name ?? "").trim().split(/\s+/);
     const firstName = parts[0] ?? "";
@@ -280,8 +270,9 @@ router.post("/auth/verify-otp", async (req, res) => {
 });
 
 // POST /auth/login
+// POST /auth/login
 // Logs in via email and password, returning a session token.
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", authLimiter, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid email or password format" });
@@ -304,13 +295,13 @@ router.post("/auth/login", async (req, res) => {
     const accessToken = data.session.access_token;
     const userId = data.user!.id;
 
-    const { data: profile } = await supabaseApp
+    const { data: profile, error: profileErr } = await supabaseApp
       .from("profiles")
-      .select("id, estate_id, unit_id, role, full_name, email, phone, is_active")
+      .select("id, estate_id, unit_id, role, full_name, email, phone, is_active, estates(name, address), units(unit_number)")
       .eq("id", userId)
       .single();
 
-    if (!profile) {
+    if (profileErr || !profile) {
       res.status(404).json({ error: "Profile not found" });
       return;
     }
@@ -320,21 +311,8 @@ router.post("/auth/login", async (req, res) => {
       return;
     }
 
-    let unitNumber: string | null = null;
-    if (profile.unit_id) {
-      const { data: unit } = await supabaseApp
-        .from("units")
-        .select("unit_number")
-        .eq("id", profile.unit_id)
-        .single();
-      unitNumber = unit?.unit_number ?? null;
-    }
-
-    const { data: estate } = await supabaseApp
-      .from("estates")
-      .select("name, address")
-      .eq("id", profile.estate_id)
-      .single();
+    const unitNumber = profile.units?.unit_number ?? null;
+    const estate = profile.estates ?? {};
 
     const parts = (profile.full_name ?? "").trim().split(/\s+/);
     const firstName = parts[0] ?? "";
@@ -365,32 +343,19 @@ router.post("/auth/login", async (req, res) => {
 // GET /auth/me — returns fresh profile data for the authenticated user
 router.get("/auth/me", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { data: profile } = await supabaseApp
+    const { data: profile, error: profileErr } = await supabaseApp
       .from("profiles")
-      .select("id, estate_id, unit_id, role, full_name, email, phone, is_active")
+      .select("id, estate_id, unit_id, role, full_name, email, phone, is_active, estates(name, address), units(unit_number)")
       .eq("id", req.user!.userId)
       .single();
 
-    if (!profile) {
+    if (profileErr || !profile) {
       res.status(404).json({ error: "Profile not found" });
       return;
     }
 
-    let unitNumber: string | null = null;
-    if (profile.unit_id) {
-      const { data: unit } = await supabaseApp
-        .from("units")
-        .select("unit_number")
-        .eq("id", profile.unit_id)
-        .single();
-      unitNumber = unit?.unit_number ?? null;
-    }
-
-    const { data: estate } = await supabaseApp
-      .from("estates")
-      .select("name, address")
-      .eq("id", profile.estate_id)
-      .single();
+    const unitNumber = profile.units?.unit_number ?? null;
+    const estate = profile.estates ?? {};
 
     const parts = (profile.full_name ?? "").trim().split(/\s+/);
     const firstName = parts[0] ?? "";
