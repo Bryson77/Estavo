@@ -130,6 +130,7 @@ interface AppContextValue {
   addGateActivity: (activity: Omit<GateActivity, "id">) => void;
   createPost: (data: { content: string; postType: string; isAnonymous: boolean }) => Promise<void>;
   rsvpEvent: (eventId: string, response: "yes" | "no" | "maybe") => Promise<void>;
+  bookAmenity: (amenityId: string, slotStart: string, slotEnd: string) => Promise<any>;
   triggerEmergency: () => Promise<{ emergencyRef: string; message: string }>;
   markBroadcastRead: (id: string) => Promise<void>;
 }
@@ -288,6 +289,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ));
   }, [token]);
 
+  const bookAmenity = useCallback(async (amenityId: string, slotStart: string, slotEnd: string) => {
+    if (!token) throw new Error("Not authenticated");
+    const result = await apiClient.bookAmenity(token, { amenityId, slotStart, slotEnd });
+    await refreshCommunity();
+    return result.booking;
+  }, [token, refreshCommunity]);
+
   const triggerEmergency = useCallback(async () => {
     if (!token) throw new Error("Not authenticated");
     const result = await apiClient.triggerEmergency(token);
@@ -327,6 +335,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addGateActivity,
       createPost,
       rsvpEvent,
+      bookAmenity,
       triggerEmergency,
       markBroadcastRead,
     }}>

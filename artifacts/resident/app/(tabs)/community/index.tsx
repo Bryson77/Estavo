@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
   Alert,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -45,7 +46,7 @@ function fmtEventDate(iso: string): string {
 
 // ─── Amenity Panel ─────────────────────────────────────────────────────────────
 
-function AmenityPanel({ amenities }: { amenities: Amenity[] }) {
+function AmenityPanel({ amenities, onBook }: { amenities: Amenity[]; onBook: (a: Amenity) => void }) {
   const colors = useColors();
 
   const fallbackAmenities = amenities.length > 0
@@ -78,7 +79,7 @@ function AmenityPanel({ amenities }: { amenities: Amenity[] }) {
             </View>
             <Pressable
               style={({ pressed }) => [styles.bookBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
-              onPress={() => Haptics.selectionAsync()}
+              onPress={() => { Haptics.selectionAsync(); onBook(a); }}
             >
               <Text style={styles.bookBtnText}>Book</Text>
             </Pressable>
@@ -245,10 +246,13 @@ export default function CommunityScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { posts, events, amenities, isLoading, createPost, refreshCommunity } = useApp();
+  const { posts, events, amenities, isLoading, createPost, refreshCommunity, bookAmenity } = useApp();
 
   const [mainTab, setMainTab] = useState<MainTab>("events");
   const [showAmenities, setShowAmenities] = useState(false);
+  const [bookingAmenity, setBookingAmenity] = useState<Amenity | null>(null);
+  const [bookingTime, setBookingTime] = useState("");
+  const [isBooking, setIsBooking] = useState(false);
 
   const initials = user
     ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase()
@@ -293,7 +297,7 @@ export default function CommunityScreen() {
         {/* ── Amenity panel (expandable) ── */}
         {showAmenities && (
           <View style={{ paddingHorizontal: 14, paddingTop: 8 }}>
-            <AmenityPanel amenities={amenities} />
+            <AmenityPanel amenities={amenities} onBook={setBookingAmenity} />
           </View>
         )}
 
@@ -355,6 +359,58 @@ export default function CommunityScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Booking Modal ── */}
+      {bookingAmenity && (
+        <Modal transparent animationType="fade" visible={!!bookingAmenity}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Book {bookingAmenity.name}</Text>
+              <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>Enter your preferred start time (e.g. 14:00)</Text>
+              
+              <TextInput
+                style={[styles.modalInput, { backgroundColor: colors.background, color: colors.foreground, borderColor: colors.border }]}
+                placeholder="14:00"
+                placeholderTextColor={colors.mutedForeground}
+                value={bookingTime}
+                onChangeText={setBookingTime}
+                keyboardType="numbers-and-punctuation"
+              />
+
+              <View style={styles.modalActions}>
+                <Pressable
+                  style={[styles.modalBtn, { backgroundColor: colors.muted }]}
+                  onPress={() => { setBookingAmenity(null); setBookingTime(""); }}
+                  disabled={isBooking}
+                >
+                  <Text style={[styles.modalBtnText, { color: colors.foreground }]}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.modalBtn, { backgroundColor: colors.primary }]}
+                  onPress={async () => {
+                    if (!bookingTime.trim()) return;
+                    setIsBooking(true);
+                    try {
+                      const today = new Date().toISOString().split("T")[0];
+                      await bookAmenity(bookingAmenity.id, `${today}T${bookingTime}:00Z`, `${today}T${bookingTime}:00Z`);
+                      Alert.alert("Success", `${bookingAmenity.name} booked successfully!`);
+                      setBookingAmenity(null);
+                      setBookingTime("");
+                    } catch (e: any) {
+                      Alert.alert("Error", e.message ?? "Could not book amenity.");
+                    } finally {
+                      setIsBooking(false);
+                    }
+                  }}
+                  disabled={isBooking || !bookingTime.trim()}
+                >
+                  {isBooking ? <ActivityIndicator color="#fff" /> : <Text style={[styles.modalBtnText, { color: "#FFFFFF" }]}>Confirm</Text>}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -497,4 +553,36 @@ const styles = StyleSheet.create({
   // Empty state
   empty: { alignItems: "center", paddingTop: 48, gap: 10 },
   emptyText: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center", lineHeight: 20 },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalContent: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    gap: 12,
+  },
+  modalTitle: { fontFamily: "Inter_700Bold", fontSize: 18 },
+  modalSub: { fontFamily: "Inter_400Regular", fontSize: 13 },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
+    fontFamily: "Inter_500Medium",
+    marginTop: 4,
+  },
+  modalActions: { flexDirection: "row", gap: 10, marginTop: 8 },
+  modalBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  modalBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
 });
