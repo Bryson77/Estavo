@@ -1,19 +1,76 @@
 import { Router } from "express";
-import { requireAuth } from "../lib/auth.js";
-
-// TODO: Emergency routes are not yet implemented for the Supabase schema.
-// The `incidents` table exists in the live Supabase project and is the
-// likely target for this feature — wire up in a follow-up session once
-// the schema and RLS policies have been confirmed.
+import { z } from "zod";
+import { supabaseApp } from "../lib/supabase.js";
+import { requireAuth, type AuthRequest } from "../lib/auth.js";
 
 const router = Router();
 
-router.post("/emergency", requireAuth, (_req, res) => {
-  res.status(501).json({ error: "Not implemented yet" });
+// POST /emergency — resident triggers a security alert
+router.post("/emergency", requireAuth, async (req: AuthRequest, res) => {
+  const { estateId, unitId, userId, firstName, lastName } = req.user!;
+  try {
+    const ref = `EMG-${Date.now().toString(36).toUpperCase()}`;
+
+    const { data: row, error } = await req.supabaseClient!
+      .from("incidents")
+      .insert({
+        estate_id: estateId,
+        unit_id: unitId ?? null,
+        reported_by: userId,
+        reporter_name: `${firstName} ${lastName}`.trim(),
+        incident_type: "emergency_alert",
+        description: "Resident triggered emergency alert via app.",
+        emergency_ref: ref,
+        status: "open",
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      res.status(500).json({ error: "Failed to raise alert" }); return;
+    }
+
+    res.status(201).json({
+      success: true,
+      emergencyRef: ref,
+      incidentId: row.id,
+      message: "Security has been alerted. Help is on the way.",
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to raise alert" });
+  }
 });
 
-router.get("/emergency/history", requireAuth, (_req, res) => {
-  res.status(501).json({ error: "Not implemented yet", alerts: [] });
+// GET /emergency/history
+router.get("/emergency/history", requireAuth, async (req: AuthRequest, res) => {
+  const { estateId, unitId, role } = req.user!;
+  try {
+    let query = supabaseApp
+      .from("incidents")
+      .select("id, incident_type, description, emergency_ref, status, created_at")
+      .eq("estate_id", estateId)
+      .eq("incident_type", "emergency_alert")
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (role === "resident" && unitId) {
+      query = query.eq("unit_id", unitId);
+    }
+
+    const { data: rows, error } = await query;
+    if (error) { res.status(500).json({ error: "Failed to load history" }); return; }
+
+    res.json({
+      alerts: (rows ?? []).map(r => ({
+        id: r.id,
+        ref: r.emergency_ref,
+        status: r.status,
+        createdAt: r.created_at,
+      })),
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to load history" });
+  }
 });
 
 export default router;

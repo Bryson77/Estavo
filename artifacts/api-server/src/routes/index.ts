@@ -8,6 +8,7 @@ import communityRouter from "./community.js";
 import amenitiesRouter from "./amenities.js";
 import emergencyRouter from "./emergency.js";
 import contractorsRouter from "./contractors.js";
+import platformRouter from "./platform.js";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(communityRouter);
 router.use(amenitiesRouter);
 router.use(emergencyRouter);
 router.use(contractorsRouter);
+router.use(platformRouter);
 
 export default router;
