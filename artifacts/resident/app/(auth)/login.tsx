@@ -16,27 +16,37 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiClient } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { setSession } = useAuth();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleContinue = async () => {
+  const handleLogin = async () => {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !trimmed.includes("@")) {
       Alert.alert("Invalid email", "Please enter a valid email address.");
       return;
     }
+    if (password.length < 6) {
+      Alert.alert("Invalid password", "Password must be at least 6 characters.");
+      return;
+    }
 
     setLoading(true);
     try {
-      await apiClient.requestOtp(trimmed);
-      router.push({ pathname: "/(auth)/verify", params: { email: trimmed } });
+      const data = await apiClient.login(trimmed, password);
+      // Wait a moment for setSession to process
+      setTimeout(() => {
+        setSession(data.token, data.user);
+      }, 100);
     } catch (err: any) {
-      Alert.alert("Error", err.message ?? "Failed to send OTP. Please try again.");
+      Alert.alert("Login Failed", err.message ?? "Invalid email or password.");
     } finally {
       setLoading(false);
     }
@@ -61,7 +71,7 @@ export default function LoginScreen() {
       <View style={styles.body}>
         <Text style={[styles.title, { color: colors.foreground }]}>Welcome back</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Enter your email address to receive a one-time sign-in code
+          Log in with your email and password
         </Text>
 
         <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card }]}>
@@ -76,23 +86,47 @@ export default function LoginScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="email"
-            returnKeyType="send"
-            onSubmitEditing={handleContinue}
+            returnKeyType="next"
           />
         </View>
+
+        <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card, marginBottom: 8 }]}>
+          <Ionicons name="lock-closed-outline" size={18} color={colors.mutedForeground} />
+          <TextInput
+            style={[styles.input, { color: colors.foreground }]}
+            placeholder="Password"
+            placeholderTextColor={colors.mutedForeground}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="done"
+            onSubmitEditing={handleLogin}
+          />
+        </View>
+
+        <Pressable
+          style={styles.forgotBtn}
+          onPress={() => router.push("/(auth)/setup-password")}
+        >
+          <Text style={[styles.forgotText, { color: colors.primary }]}>
+            First time logging in? / Forgot password
+          </Text>
+        </Pressable>
 
         <Pressable
           style={({ pressed }) => [
             styles.btn,
             { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
           ]}
-          onPress={handleContinue}
+          onPress={handleLogin}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.btnText}>Send code</Text>
+            <Text style={styles.btnText}>Log In</Text>
           )}
         </Pressable>
 
@@ -152,6 +186,15 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: "Inter_400Regular",
     fontSize: 15,
+  },
+  forgotBtn: {
+    alignSelf: "flex-end",
+    marginBottom: 24,
+    paddingVertical: 4,
+  },
+  forgotText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
   },
   btn: {
     borderRadius: 12,

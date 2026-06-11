@@ -24,6 +24,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "doc.text", selected: "doc.text.fill" }} />
         <Label>Reports</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="levy/index">
+        <Icon sf={{ default: "creditcard", selected: "creditcard.fill" }} />
+        <Label>Levies</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="guests/index">
         <Icon sf={{ default: "key", selected: "key.fill" }} />
         <Label>Guests</Label>
@@ -103,6 +107,18 @@ function ClassicTabLayout() {
               <SymbolView name="doc.text" tintColor={color} size={24} />
             ) : (
               <Ionicons name="document-text-outline" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="levy"
+        options={{
+          title: "Levies",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="creditcard" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="card-outline" size={22} color={color} />
             ),
         }}
       />

@@ -9,6 +9,7 @@ import amenitiesRouter from "./amenities.js";
 import emergencyRouter from "./emergency.js";
 import contractorsRouter from "./contractors.js";
 import platformRouter from "./platform.js";
+import levyRouter from "./levy.js";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(amenitiesRouter);
 router.use(emergencyRouter);
 router.use(contractorsRouter);
 router.use(platformRouter);
+router.use(levyRouter);
 
 export default router;

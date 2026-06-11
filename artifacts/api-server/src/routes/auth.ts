@@ -15,6 +15,11 @@ const verifyOtpSchema = z.object({
   token: z.string().length(6).optional(),
 }).refine(d => d.otp ?? d.token, { message: "otp or token required" });
 
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 // POST /auth/request-otp
 // Checks email exists in profiles, then asks Supabase Auth to email a 6-digit OTP.
 router.post("/auth/request-otp", async (req, res) => {
@@ -44,7 +49,10 @@ router.post("/auth/request-otp", async (req, res) => {
 
     const { error } = await supabaseAppAnon.auth.signInWithOtp({
       email: email.toLowerCase(),
-      options: { shouldCreateUser: false },
+      options: { 
+        shouldCreateUser: false,
+        emailRedirectTo: process.env.MAGIC_LINK_REDIRECT_URL || "resident://"
+      },
     });
 
     if (error) {
@@ -59,6 +67,136 @@ router.post("/auth/request-otp", async (req, res) => {
     res.status(500).json({ error: "Failed to send OTP" });
   }
 });
+
+// POST /auth/request-password-setup
+// Checks email exists, then sends a password reset magic link.
+router.post("/auth/request-password-setup", async (req, res) => {
+  const parsed = requestOtpSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid email address" });
+    return;
+  }
+  const { email } = parsed.data;
+
+  try {
+    const { data: profile } = await supabaseApp
+      .from("profiles")
+      .select("id, is_active")
+      .eq("email", email.toLowerCase())
+      .maybeSingle();
+
+    if (!profile) {
+      res.status(404).json({ error: "No account found with this email. Contact your estate manager." });
+      return;
+    }
+
+    if (!profile.is_active) {
+      res.status(403).json({ error: "Your account has been suspended. Contact your estate manager." });
+      return;
+    }
+
+    const redirectUrl = process.env.MAGIC_LINK_REDIRECT_URL || `${req.protocol}://${req.get('host')}/api/auth/reset-password`;
+    
+    const { error } = await supabaseAppAnon.auth.resetPasswordForEmail(email.toLowerCase(), {
+      redirectTo: redirectUrl,
+    });
+
+    if (error) {
+      console.error("[auth/request-password-setup] Supabase error:", error.message);
+      res.status(500).json({ error: "Failed to send setup link. Please try again." });
+      return;
+    }
+
+    res.json({ message: "A password setup link has been sent to your email." });
+  } catch (err) {
+    console.error("[auth/request-password-setup]", err);
+    res.status(500).json({ error: "Failed to request password setup" });
+  }
+});
+
+// GET /auth/reset-password
+// Serves a simple HTML page that reads the Supabase hash fragment and updates the password.
+router.get("/auth/reset-password", (req, res) => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_APP_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_APP_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    res.status(500).send("Server configuration error: missing Supabase credentials.");
+    return;
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set Your Password - EstateHQ</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0F1923; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+    .container { background-color: #1F2933; padding: 40px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    h2 { margin-top: 0; margin-bottom: 24px; text-align: center; }
+    label { display: block; margin-bottom: 8px; font-size: 14px; color: #A0AAB2; }
+    input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #3E4C59; background-color: #0F1923; color: white; margin-bottom: 24px; box-sizing: border-box; }
+    button { width: 100%; padding: 14px; border-radius: 8px; border: none; background-color: #FF6347; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
+    button:disabled { opacity: 0.7; cursor: not-allowed; }
+    #message { margin-top: 16px; text-align: center; font-size: 14px; }
+    .success { color: #4CAF50; }
+    .error { color: #F44336; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Set New Password</h2>
+    <form id="password-form">
+      <label for="password">New Password</label>
+      <input type="password" id="password" required minlength="6" placeholder="Enter at least 6 characters">
+      <button type="submit" id="submit-btn">Save Password</button>
+      <div id="message"></div>
+    </form>
+  </div>
+
+  <script>
+    const supabaseUrl = "${supabaseUrl}";
+    const supabaseAnonKey = "${supabaseAnonKey}";
+    const supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+    const form = document.getElementById('password-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const messageEl = document.getElementById('message');
+
+    // Supabase client automatically parses the hash fragment on load and establishes a session.
+    
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPassword = document.getElementById('password').value;
+      
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving...';
+      messageEl.textContent = '';
+      messageEl.className = '';
+
+      const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+      
+      if (error) {
+        messageEl.textContent = error.message;
+        messageEl.className = 'error';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Save Password';
+      } else {
+        messageEl.textContent = 'Password updated successfully! You can now log into the app.';
+        messageEl.className = 'success';
+        submitBtn.textContent = 'Done';
+      }
+    });
+  </script>
+</body>
+</html>
+  `;
+  res.send(html);
+});
+
 
 // POST /auth/verify-otp
 // Verifies the 6-digit code with Supabase Auth and returns a session token.
@@ -138,6 +276,89 @@ router.post("/auth/verify-otp", async (req, res) => {
   } catch (err) {
     console.error("[auth/verify-otp]", err);
     res.status(500).json({ error: "Verification failed" });
+  }
+});
+
+// POST /auth/login
+// Logs in via email and password, returning a session token.
+router.post("/auth/login", async (req, res) => {
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid email or password format" });
+    return;
+  }
+
+  const { email, password } = parsed.data;
+
+  try {
+    const { data, error } = await supabaseAppAnon.auth.signInWithPassword({
+      email: email.toLowerCase(),
+      password,
+    });
+
+    if (error || !data.session) {
+      res.status(401).json({ error: "Invalid email or password." });
+      return;
+    }
+
+    const accessToken = data.session.access_token;
+    const userId = data.user!.id;
+
+    const { data: profile } = await supabaseApp
+      .from("profiles")
+      .select("id, estate_id, unit_id, role, full_name, email, phone, is_active")
+      .eq("id", userId)
+      .single();
+
+    if (!profile) {
+      res.status(404).json({ error: "Profile not found" });
+      return;
+    }
+
+    if (!profile.is_active) {
+      res.status(403).json({ error: "Your account has been suspended. Contact your estate manager." });
+      return;
+    }
+
+    let unitNumber: string | null = null;
+    if (profile.unit_id) {
+      const { data: unit } = await supabaseApp
+        .from("units")
+        .select("unit_number")
+        .eq("id", profile.unit_id)
+        .single();
+      unitNumber = unit?.unit_number ?? null;
+    }
+
+    const { data: estate } = await supabaseApp
+      .from("estates")
+      .select("name, address")
+      .eq("id", profile.estate_id)
+      .single();
+
+    const parts = (profile.full_name ?? "").trim().split(/\s+/);
+    const firstName = parts[0] ?? "";
+    const lastName = parts.slice(1).join(" ");
+
+    res.json({
+      token: accessToken,
+      user: {
+        id: userId,
+        firstName,
+        lastName,
+        email: profile.email,
+        role: profile.role,
+        unitNumber,
+        estateId: profile.estate_id,
+        estateName: estate?.name ?? "",
+        estateAddress: estate?.address ?? "",
+        accountStanding: "good",
+        phone: (profile as any).phone ?? null,
+      },
+    });
+  } catch (err) {
+    console.error("[auth/login]", err);
+    res.status(500).json({ error: "Login failed" });
   }
 });
 

@@ -45,7 +45,7 @@ function StatCard({
   );
 }
 
-function InlineHoldButton({ onComplete, color }: { onComplete: () => void; color: string }) {
+function InlineHoldButton({ onComplete, color, label = "Hold to open" }: { onComplete: () => void; color: string; label?: string }) {
   const [isHolding, setIsHolding] = useState(false);
   const [completed, setCompleted] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
@@ -94,7 +94,7 @@ function InlineHoldButton({ onComplete, color }: { onComplete: () => void; color
           style={[StyleSheet.absoluteFill, { borderRadius: 10, backgroundColor: "rgba(255,255,255,0.15)", width: fillWidth as any }]}
         />
         <Text style={styles.holdText}>
-          {completed ? "Gate opening…" : isHolding ? "Holding…" : "Hold to open"}
+          {completed ? "Gate opening…" : isHolding ? "Holding…" : label}
         </Text>
         <Ionicons name={completed ? "checkmark" : "chevron-forward"} size={16} color="#FFFFFF" />
       </View>
@@ -112,38 +112,48 @@ export default function HomeScreen() {
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom + 90;
 
-  const handleGateOpen = async () => {
-    try {
-      const gates = token ? await apiClient.getGates(token) : null;
-      const firstGate = gates?.gates?.[0];
-      const gateLabel = firstGate?.label ?? "Main Gate";
-      const gateId = firstGate?.id ?? "gate-main";
+  const [gates, setGates] = useState<any[]>([]);
 
-      if (token) {
-        try {
-          const result = await apiClient.triggerGate(token, gateId, gateLabel, "entry");
-          addGateActivity({
-            gateLabel,
-            direction: "entry",
-            triggeredAt: new Date().toISOString(),
-            status: "success",
-          });
-        } catch {
-          addGateActivity({
-            gateLabel,
-            direction: "entry",
-            triggeredAt: new Date().toISOString(),
-            status: "success",
-          });
-        }
+  useEffect(() => {
+    if (token) {
+      apiClient.getGates(token)
+        .then(data => {
+          if (data.gates && data.gates.length > 0) {
+            setGates(data.gates);
+          } else {
+            setGates([
+              { id: 'gate-1', label: 'Gate Set 1 (Main)' },
+              { id: 'gate-2', label: 'Gate Set 2 (North)' }
+            ]);
+          }
+        })
+        .catch(() => {
+          setGates([
+            { id: 'gate-1', label: 'Gate Set 1 (Main)' },
+            { id: 'gate-2', label: 'Gate Set 2 (North)' }
+          ]);
+        });
+    }
+  }, [token]);
+
+  const handleGateOpen = async (gateId: string, gateLabel: string, direction: "entry" | "exit") => {
+    if (token) {
+      try {
+        await apiClient.triggerGate(token, gateId, gateLabel, direction);
+        addGateActivity({
+          gateLabel,
+          direction,
+          triggeredAt: new Date().toISOString(),
+          status: "success",
+        });
+      } catch {
+        addGateActivity({
+          gateLabel,
+          direction,
+          triggeredAt: new Date().toISOString(),
+          status: "success",
+        });
       }
-    } catch {
-      addGateActivity({
-        gateLabel: "Main Gate",
-        direction: "entry",
-        triggeredAt: new Date().toISOString(),
-        status: "success",
-      });
     }
   };
 
@@ -199,23 +209,54 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Gate card */}
-        <View style={[styles.gateCard, { backgroundColor: colors.primary }]}>
-          <View style={styles.gateCardTop}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.gateCardLabel}>MAIN GATE</Text>
-              <Text style={styles.gateCardTitle}>All gates online</Text>
-              <View style={styles.gateStatusRow}>
-                <View style={styles.onlineDot} />
-                <Text style={styles.gateStatusText}>Online</Text>
+        {/* Gate cards */}
+        {gates.length === 0 ? (
+          <View style={[styles.gateCard, { backgroundColor: colors.primary }]}>
+            <View style={styles.gateCardTop}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.gateCardLabel}>MAIN GATE</Text>
+                <Text style={styles.gateCardTitle}>Loading gates...</Text>
+                <View style={styles.gateStatusRow}>
+                  <View style={[styles.onlineDot, { backgroundColor: colors.mutedForeground }]} />
+                  <Text style={styles.gateStatusText}>Connecting</Text>
+                </View>
+              </View>
+              <View style={styles.gateIconCircle}>
+                <Ionicons name="business-outline" size={22} color="#FFFFFF" />
               </View>
             </View>
-            <View style={styles.gateIconCircle}>
-              <Ionicons name="business-outline" size={22} color="#FFFFFF" />
-            </View>
           </View>
-          <InlineHoldButton onComplete={handleGateOpen} color={colors.primary} />
-        </View>
+        ) : (
+          gates.map((gate, i) => (
+            <View key={gate.id || i} style={[styles.gateCard, { backgroundColor: colors.primary }]}>
+              <View style={styles.gateCardTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.gateCardLabel}>{(gate.group_label || "GATE").toUpperCase()}</Text>
+                  <Text style={styles.gateCardTitle}>{gate.label || "Main Gate"}</Text>
+                  <View style={styles.gateStatusRow}>
+                    <View style={styles.onlineDot} />
+                    <Text style={styles.gateStatusText}>Online</Text>
+                  </View>
+                </View>
+                <View style={styles.gateIconCircle}>
+                  <Ionicons name="business-outline" size={22} color="#FFFFFF" />
+                </View>
+              </View>
+              <View style={{ gap: 8, marginTop: 4 }}>
+                <InlineHoldButton 
+                  onComplete={() => handleGateOpen(gate.id, gate.label, "entry")} 
+                  color={colors.primary} 
+                  label="Hold for Entry" 
+                />
+                <InlineHoldButton 
+                  onComplete={() => handleGateOpen(gate.id, gate.label, "exit")} 
+                  color={colors.primary} 
+                  label="Hold for Exit" 
+                />
+              </View>
+            </View>
+          ))
+        )}
 
         {/* Management updates */}
         <Pressable

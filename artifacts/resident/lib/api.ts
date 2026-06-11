@@ -42,6 +42,18 @@ export const apiClient = {
       body: JSON.stringify({ email }),
     }),
 
+  login: (email: string, password: string) =>
+    request<{ token: string; user: any }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+
+  requestPasswordSetup: (email: string) =>
+    request<{ message: string }>("/auth/request-password-setup", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
   verifyOtp: (email: string, otp: string) =>
     request<{ token: string; user: any }>("/auth/verify-otp", {
       method: "POST",
@@ -138,6 +150,15 @@ export const apiClient = {
 
   getContractors: (token: string) =>
     request<{ contractors: any[] }>("/contractors", { token }),
+
+  getLevyAccount: (token: string) =>
+    request<{ balance: number; lastUpdated: string }>("/levy/account", { token }),
+
+  getLevyTransactions: (token: string) =>
+    request<{ transactions: any[] }>("/levy/transactions", { token }),
+
+  seedLevyAccount: (token: string) =>
+    request<{ success: boolean; message: string }>("/levy/seed", { method: "POST", token }),
 
   logout: (token: string) =>
     request<{ success: boolean }>("/auth/logout", { method: "POST", token }),

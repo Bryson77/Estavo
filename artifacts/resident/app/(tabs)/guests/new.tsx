@@ -48,14 +48,14 @@ export default function NewGuestScreen() {
 
     setLoading(true);
     try {
-      await addGuestCode({
+      const newCode = await addGuestCode({
         guestFirstName: isParcel ? "Parcel" : firstName.trim(),
         guestLastName: isParcel ? "Delivery" : lastName.trim(),
         guestPhone: phone.trim() || undefined,
         isParcel,
         durationHours,
       });
-      router.back();
+      router.replace(`/(tabs)/guests/${newCode.id}` as any);
     } catch (err: any) {
       Alert.alert("Error", err.message ?? "Could not create guest code.");
     } finally {
