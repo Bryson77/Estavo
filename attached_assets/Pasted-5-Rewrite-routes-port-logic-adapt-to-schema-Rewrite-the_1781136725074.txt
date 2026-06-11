@@ -1,0 +1,48 @@
+5. Rewrite routes — port logic, adapt to schema
+
+Rewrite these files to use Supabase client calls against the tables above. Keep existing validation (Zod schemas) and business logic where it maps cleanly:
+
+
+routes/guests.ts (was using guest_codes table) → use guest_otps:
+
+GET /guests: query guest_otps where estate_id = req.estateId AND unit_id = req.unitId, ordered by created_at desc
+Read guest_code_config from the estate's row (estates.guest_code_config jsonb) for max_active_codes_per_unit, default_uses_total, parcel_uses_total, available_durations_hours
+POST /guests: validate against config, generate 6-digit otp_code, insert into guest_otps with uses_total/uses_remaining based on is_parcel
+DELETE /guests/:id: set revoked_at = now(), deactivated_by = userId
+
+
+
+routes/gates.ts (was using gate_logs table) → use gate_log + gate_status + estates.gates:
+
+GET /gates: return estates.gates (jsonb array) for the user's estate
+POST /gates/trigger: insert into gate_log with gate_id, gate_label, direction, status='success', triggered_by info via staff_id/unit_id as appropriate, hardware_response_ms (can keep simulated random value for now)
+POST /gates/undo: update the gate_log row's status to 'cancelled' where id = logId AND estate_id = req.estateId
+GET /gates/activity: select from gate_log where estate_id = req.estateId, filtered to the user's own entries if resident, ordered by entered_at desc, limit 50
+
+
+
+Other routes (amenities.ts, community.ts, contractors.ts, emergency.ts, reports.ts, broadcasts.ts if present): these reference tables NOT yet in the Supabase schema (reports, emergency, community, amenities, contractors, broadcasts were Drizzle-only). For now, comment out or stub these routes with a 501 Not Implemented response and a TODO comment — do not invent new Supabase tables for these without explicit confirmation. We'll design these schemas properly in a follow-up session.
+
+
+6. Resident app (artifacts/resident)
+
+
+Update lib/api.ts if needed to match any changed API response shapes from the rewritten routes
+Auth flow should call Supabase Auth directly where appropriate (magic link sign-in) rather than the custom backend auth
+
+
+7. What NOT to do
+
+
+Do not create any new Supabase tables
+Do not modify the Supabase dashboard/schema directly
+Do not invent a new schema for reports/emergency/community/amenities/contractors — stub these routes instead
+Do not re-introduce DATABASE_URL or any direct Postgres connection
+Do not change RLS policies
+
+
+Working style
+
+Work through this file by file: lib/db removal first, then lib/supabase.ts (verify it's correct as-is), then lib/auth.ts, then routes/auth.ts, then routes/guests.ts, then routes/gates.ts, then stub the remaining routes, then check artifacts/resident/lib/api.ts for compatibility. After each file, briefly state what changed before moving to the next — don't silently batch everything into one giant diff, so Bryson can follow along.
+
+If you hit a genuine ambiguity (e.g., unsure how Supabase JS v2 wants per-request user-scoped clients structured), pick the documented, standard approach and note it — don't enter an extended planning loop.

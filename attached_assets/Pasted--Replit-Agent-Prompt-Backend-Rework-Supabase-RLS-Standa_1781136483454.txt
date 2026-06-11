@@ -1,0 +1,103 @@
+# Replit Agent Prompt — Backend Rework (Supabase + RLS Standardization)
+
+Copy-paste this entire prompt to the Replit agent as one message.
+
+---
+
+We're standardizing this project's data layer on Supabase only. Read this fully before making any changes — do not start editing files yet, confirm you understand the plan first if anything is unclear, but do not propose alternative architectures.
+
+## Context
+
+The current `artifacts/api-server` backend uses Drizzle ORM (`lib/db`) with a direct Postgres connection (`DATABASE_URL`) and a custom schema (`users`, `guest_codes`, `gate_logs`, etc.) with custom auth fields (`passwordHash`, `otpCode`). This schema does NOT exist in any live database — no migrations have been run.
+
+We are NOT using this Drizzle schema. Instead, we already have a fully set-up Supabase project (`estatehq-app`) with tables, RLS policies, and Storage already configured and live with test data. Environment variables for Supabase (anon key, service role key, platform keys) are already added to this Repl's secrets.
+
+## What to do
+
+### 1. Remove Drizzle entirely
+- Delete the `lib/db` package completely (schema files, `drizzle.config.ts`, `index.ts`, `package.json`)
+- Remove all imports of `@workspace/db` from `artifacts/api-server`
+- Remove `DATABASE_URL` dependency — it's not needed
+
+### 2. Use Supabase clients only
+`artifacts/api-server/src/lib/supabase.ts` already exports:
+- `supabaseApp` — service role client (bypasses RLS — use ONLY for genuinely cross-estate/admin operations like Superadmin estate provisioning)
+- `supabaseAppAnon` — anon client, used to verify user JWTs and make RLS-respecting queries on behalf of the logged-in user
+- `supabasePlatform` — platform project client (billing/superadmin)
+
+For all per-user operations (a resident fetching their own guest codes, a manager viewing their estate's data, etc.), use `supabaseAppAnon` with the user's JWT attached (via `.auth.setSession()` or by passing the JWT in headers, whichever pattern Supabase JS v2 recommends for server-side per-request clients) — so RLS policies enforce estate/role isolation automatically.
+
+Use `supabaseApp` (service role) ONLY for: Superadmin "onboard new estate" flow, or other genuinely platform-wide operations explicitly described as such.
+
+### 3. Tables to use — DO NOT create new tables, DO NOT rename columns
+
+These tables already exist in `estatehq-app` with RLS policies live:
+
+```
+estates           - id, name, address, unit_count, subscription_tier, is_active,
+                     guest_code_config (jsonb), gates (jsonb), created_at
+units             - id, estate_id, unit_number, status, occupancy_type, created_at
+profiles          - id (matches auth.users.id), estate_id, unit_id, role, full_name,
+                     email, phone, is_active, created_at
+                     role is one of: resident, security, manager, trustee, superadmin
+guest_otps        - id, estate_id, unit_id, resident_id, otp_code, guest_name,
+                     guest_phone, is_parcel, valid_from, valid_until, used_at,
+                     revoked_at, uses_total, uses_remaining, extension_count,
+                     deactivated_by, deactivated_at, created_at
+gate_log          - id, estate_id, entry_type, guest_name, unit_id, otp_id, staff_id,
+                     id_number, gate_id, gate_label, direction, status,
+                     hardware_response_ms, entered_at, exited_at
+gate_status       - id, estate_id, status (open/closed/locked), updated_at, updated_by
+                     (Realtime enabled on this table)
+levy_accounts     - id, estate_id, unit_id, balance, last_updated
+levy_transactions - id, estate_id, unit_id, type, amount, description, created_at, created_by
+maintenance_requests - id, estate_id, unit_id, submitted_by, category, description,
+                        status, assigned_to, photo_url, notes, created_at, resolved_at, rating
+notices           - id, estate_id, title, body, category, attachment_url, created_by,
+                     published_at, scheduled_for, created_at
+incidents         - id, estate_id, reported_by, type, description, photo_url, created_at
+```
+
+Helper SQL functions already exist (used inside RLS policies, not needed in app code): `get_my_estate_id()`, `get_my_role()`.
+
+### 4. Authentication — Supabase Auth only
+
+- Residents: magic link (email) — `supabase.auth.signInWithOtp({ email })`
+- Security/Manager/Trustee/Superadmin: email + password, with TOTP/MFA enforcement at the app level (Supabase MFA capability is enabled project-wide)
+- Remove any custom JWT signing, password hashing, or custom OTP-for-login logic from `artifacts/api-server/src/lib/auth.ts` and `routes/auth.ts`
+- The `requireAuth` middleware should verify the Supabase session JWT (e.g., via `supabaseAppAnon.auth.getUser(token)`) and attach `userId`, `estateId`, `role` (fetched from `profiles`) to the request
+
+### 5. Rewrite routes — port logic, adapt to schema
+
+Rewrite these files to use Supabase client calls against the tables above. Keep existing validation (Zod schemas) and business logic where it maps cleanly:
+
+- **`routes/guests.ts`** (was using `guest_codes` table) → use `guest_otps`:
+  - GET /guests: query `guest_otps` where `estate_id = req.estateId AND unit_id = req.unitId`, ordered by `created_at desc`
+  - Read `guest_code_config` from the estate's row (`estates.guest_code_config` jsonb) for `max_active_codes_per_unit`, `default_uses_total`, `parcel_uses_total`, `available_durations_hours`
+  - POST /guests: validate against config, generate 6-digit `otp_code`, insert into `guest_otps` with `uses_total`/`uses_remaining` based on `is_parcel`
+  - DELETE /guests/:id: set `revoked_at = now()`, `deactivated_by = userId`
+
+- **`routes/gates.ts`** (was using `gate_logs` table) → use `gate_log` + `gate_status` + `estates.gates`:
+  - GET /gates: return `estates.gates` (jsonb array) for the user's estate
+  - POST /gates/trigger: insert into `gate_log` with `gate_id`, `gate_label`, `direction`, `status='success'`, `triggered_by` info via `staff_id`/`unit_id` as appropriate, `hardware_response_ms` (can keep simulated random value for now)
+  - POST /gates/undo: update the `gate_log` row's `status` to `'cancelled'` where `id = logId AND estate_id = req.estateId`
+  - GET /gates/activity: select from `gate_log` where `estate_id = req.estateId`, filtered to the user's own entries if resident, ordered by `entered_at desc`, limit 50
+
+- **Other routes** (`amenities.ts`, `community.ts`, `contractors.ts`, `emergency.ts`, `reports.ts`, `broadcasts.ts` if present): these reference tables NOT yet in the Supabase schema (`reports`, `emergency`, `community`, `amenities`, `contractors`, `broadcasts` were Drizzle-only). For now, comment out or stub these routes with a `501 Not Implemented` response and a TODO comment — do not invent new Supabase tables for these without explicit confirmation. We'll design these schemas properly in a follow-up session.
+
+### 6. Resident app (`artifacts/resident`)
+- Update `lib/api.ts` if needed to match any changed API response shapes from the rewritten routes
+- Auth flow should call Supabase Auth directly where appropriate (magic link sign-in) rather than the custom backend auth
+
+### 7. What NOT to do
+- Do not create any new Supabase tables
+- Do not modify the Supabase dashboard/schema directly
+- Do not invent a new schema for `reports`/`emergency`/`community`/`amenities`/`contractors` — stub these routes instead
+- Do not re-introduce `DATABASE_URL` or any direct Postgres connection
+- Do not change RLS policies
+
+## Working style
+
+Work through this file by file: `lib/db` removal first, then `lib/supabase.ts` (verify it's correct as-is), then `lib/auth.ts`, then `routes/auth.ts`, then `routes/guests.ts`, then `routes/gates.ts`, then stub the remaining routes, then check `artifacts/resident/lib/api.ts` for compatibility. After each file, briefly state what changed before moving to the next — don't silently batch everything into one giant diff, so Bryson can follow along.
+
+If you hit a genuine ambiguity (e.g., unsure how Supabase JS v2 wants per-request user-scoped clients structured), pick the documented, standard approach and note it — don't enter an extended planning loop.
