@@ -26,14 +26,16 @@ function StatCard({
   value,
   sub,
   iconName,
+  onPress,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   iconName: string;
+  onPress?: () => void;
 }) {
   const colors = useColors();
-  return (
+  const content = (
     <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.statHeader}>
         <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{label}</Text>
@@ -43,6 +45,10 @@ function StatCard({
       {sub ? <Text style={[styles.statSub, { color: colors.mutedForeground }]}>{sub}</Text> : null}
     </View>
   );
+  if (onPress) {
+    return <Pressable onPress={onPress} style={{ flex: 1 }}>{content}</Pressable>;
+  }
+  return <View style={{ flex: 1 }}>{content}</View>;
 }
 
 function InlineHoldButton({ onComplete, color, label = "Hold to open" }: { onComplete: () => void; color: string; label?: string }) {
@@ -223,67 +229,43 @@ export default function HomeScreen() {
         {/* Stats grid */}
         <View style={styles.statsGrid}>
           <View style={styles.statsRow}>
-            <StatCard label="ACTIVE CODES" value={guestStats.activeCodes} iconName="key-outline" />
-            <StatCard label="GUESTS INSIDE" value={guestStats.insideNow} iconName="person-outline" />
+            <StatCard label="ACTIVE CODES" value={guestStats.activeCodes} iconName="key-outline" onPress={() => router.push("/(tabs)/guests")} />
+            <StatCard label="GUESTS INSIDE" value={guestStats.insideNow} iconName="person-outline" onPress={() => router.push({ pathname: "/(tabs)/guests", params: { filter: "Inside" } })} />
           </View>
           <View style={styles.statsRow}>
             <StatCard label="WEATHER" value="24°" sub="Partly cloudy" iconName="partly-sunny-outline" />
-            <StatCard label="OPEN TICKETS" value={reportStats.open + reportStats.inProgress} iconName="build-outline" />
+            <StatCard label="OPEN TICKETS" value={reportStats.open + reportStats.inProgress} iconName="build-outline" onPress={() => router.push("/(tabs)/reports")} />
           </View>
         </View>
 
         {/* Gate cards */}
-        {gates.length === 0 ? (
+        <Pressable onPress={() => router.push("/gate-selection")}>
           <View style={[styles.gateCard, { backgroundColor: colors.primary }]}>
             <View style={styles.gateCardTop}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.gateCardLabel}>MAIN GATE</Text>
-                <Text style={styles.gateCardTitle}>Loading gates...</Text>
+                <Text style={styles.gateCardTitle}>All gates online</Text>
                 <View style={styles.gateStatusRow}>
-                  <View style={[styles.onlineDot, { backgroundColor: colors.mutedForeground }]} />
-                  <Text style={styles.gateStatusText}>Connecting</Text>
+                  <View style={styles.onlineDot} />
+                  <Text style={styles.gateStatusText}>Online</Text>
                 </View>
               </View>
               <View style={styles.gateIconCircle}>
                 <Ionicons name="business-outline" size={22} color="#FFFFFF" />
               </View>
             </View>
-          </View>
-        ) : (
-          gates.map((gate, i) => (
-            <View key={gate.id || i} style={[styles.gateCard, { backgroundColor: colors.primary }]}>
-              <View style={styles.gateCardTop}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.gateCardLabel}>{(gate.group_label || "GATE").toUpperCase()}</Text>
-                  <Text style={styles.gateCardTitle}>{gate.label || "Main Gate"}</Text>
-                  <View style={styles.gateStatusRow}>
-                    <View style={styles.onlineDot} />
-                    <Text style={styles.gateStatusText}>Online</Text>
-                  </View>
-                </View>
-                <View style={styles.gateIconCircle}>
-                  <Ionicons name="business-outline" size={22} color="#FFFFFF" />
-                </View>
-              </View>
-              <View style={{ gap: 8, marginTop: 4 }}>
-                <InlineHoldButton 
-                  onComplete={() => handleGateOpen(gate.id, gate.label, "entry")} 
-                  color={colors.primary} 
-                  label="Hold for Entry" 
-                />
-                <InlineHoldButton 
-                  onComplete={() => handleGateOpen(gate.id, gate.label, "exit")} 
-                  color={colors.primary} 
-                  label="Hold for Exit" 
-                />
+            <View style={{ marginTop: 12 }}>
+              <View style={[styles.holdRow, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
+                <Text style={styles.holdText}>Hold to open</Text>
+                <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
               </View>
             </View>
-          ))
-        )}
+          </View>
+        </Pressable>
 
         {/* Management updates */}
         <Pressable
-          onPress={() => router.push("/(tabs)/community")}
+          onPress={() => router.push("/announcements")}
           style={({ pressed }) => [
             styles.updatesCard,
             { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
