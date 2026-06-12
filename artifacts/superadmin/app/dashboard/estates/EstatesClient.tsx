@@ -59,14 +59,14 @@ export default function EstatesClient({ initialEstates }: { initialEstates: Esta
         </div>
         <Link
           href="/dashboard/provision"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all"
           style={{
-            background: "var(--sa-text)",
-            color: "var(--sa-black)",
+            background: "var(--sa-accent)",
+            color: "#FFFFFF",
           }}
         >
-          <Plus size={15} />
-          Provision New
+          <Plus size={14} />
+          Add New Estate
         </Link>
       </div>
 
@@ -100,11 +100,11 @@ export default function EstatesClient({ initialEstates }: { initialEstates: Esta
               className="px-3 py-2 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer"
               style={{
                 background:
-                  tierFilter === t ? "var(--sa-text)" : "var(--sa-surface)",
+                  tierFilter === t ? "var(--sa-accent-muted)" : "var(--sa-surface)",
                 color:
-                  tierFilter === t ? "var(--sa-black)" : "var(--sa-text-muted)",
+                  tierFilter === t ? "var(--sa-active-text)" : "var(--sa-text-muted)",
                 border: `1px solid ${
-                  tierFilter === t ? "var(--sa-text)" : "var(--sa-border)"
+                  tierFilter === t ? "var(--sa-accent)" : "var(--sa-border)"
                 }`,
               }}
             >
