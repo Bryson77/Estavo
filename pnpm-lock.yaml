@@ -231,6 +231,9 @@ importers:
         specifier: ^19.1.0
         version: 19.1.0(react@19.1.0)
     devDependencies:
+      '@cloudflare/next-on-pages':
+        specifier: ^1.13.16
+        version: 1.13.16(next@15.5.19(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(wrangler@4.100.0)
       '@tailwindcss/postcss':
         specifier: ^4.1.14
         version: 4.3.0
@@ -249,6 +252,9 @@ importers:
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
+      wrangler:
+        specifier: ^4.100.0
+        version: 4.100.0
 
   artifacts/mockup-sandbox:
     devDependencies:
