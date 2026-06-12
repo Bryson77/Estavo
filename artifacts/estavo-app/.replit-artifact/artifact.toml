@@ -1,0 +1,17 @@
+kind = "web"
+previewPath = "/app/"
+title = "Estavo App"
+version = "1.0.0"
+id = "artifacts/estavo-app"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/app/" ]
+localPort = 19461
+
+[services.development]
+run = "pnpm --filter @workspace/estavo-app run dev"
+
+[services.env]
+PORT = "19461"

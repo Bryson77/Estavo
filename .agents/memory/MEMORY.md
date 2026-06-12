@@ -1,0 +1,1 @@
+- [Estavo platform architecture](estavo-platform.md) — two separate Next.js apps: superadmin at /superadmin/, estavo-app (management/trustees/corporate) at /app/

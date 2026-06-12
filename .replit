@@ -43,3 +43,7 @@ timeoutMs = 20000
 [[ports]]
 localPort = 3000
 externalPort = 80
+
+[[ports]]
+localPort = 19461
+externalPort = 3000
