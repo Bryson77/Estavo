@@ -188,10 +188,10 @@ export default function HomeScreen() {
 
   const handleEmergency = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    router.push("/(tabs)/emergency" as any);
+    router.push("/emergency" as any);
   };
 
-  const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : "?";
+  const initials = user ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() : "?";
   const subLabel = user
     ? `RESIDENT · ${user.firstName?.toUpperCase()} ${user.lastName?.[0]?.toUpperCase()}.`
     : "RESIDENT";
@@ -256,7 +256,7 @@ export default function HomeScreen() {
             </View>
             <View style={{ marginTop: 12 }}>
               <View style={[styles.holdRow, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
-                <Text style={styles.holdText}>Hold to open</Text>
+                <Text style={styles.holdText}>Open gate</Text>
                 <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
               </View>
             </View>

@@ -12,6 +12,11 @@ const BASE_URL = (() => {
   return "http://localhost:8080/api";
 })();
 
+let onAuthErrorCallback: (() => void) | null = null;
+export function setOnAuthError(cb: () => void) {
+  onAuthErrorCallback = cb;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & { token?: string } = {}
@@ -29,7 +34,11 @@ async function request<T>(
   const data = await res.json();
 
   if (!res.ok) {
-    throw new Error(data.error ?? `Request failed: ${res.status}`);
+    const errMessage = data.error ?? `Request failed: ${res.status}`;
+    if (res.status === 401 || errMessage.toLowerCase().includes("invalid token")) {
+      if (onAuthErrorCallback) onAuthErrorCallback();
+    }
+    throw new Error(errMessage);
   }
 
   return data as T;

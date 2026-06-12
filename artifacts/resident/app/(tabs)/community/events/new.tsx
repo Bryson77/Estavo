@@ -9,7 +9,7 @@ export default function CreateEventScreen() {
   const insets = useSafeAreaInsets();
   
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScreenHeader title="New Event" showBack />
       <View style={styles.body}>
         <Text style={[styles.text, { color: colors.foreground }]}>Create event form will appear here.</Text>

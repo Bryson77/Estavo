@@ -86,7 +86,7 @@ export default function GateHoldScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScreenHeader title={name} showBack />
       <View style={[styles.body, { justifyContent: "center", alignItems: "center" }]}>
         <Text style={[styles.instruction, { color: colors.foreground }]}>Hold the button to open the gate.</Text>

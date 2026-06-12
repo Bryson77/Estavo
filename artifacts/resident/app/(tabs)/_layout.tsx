@@ -16,15 +16,15 @@ function NativeTabLayout() {
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="community/index">
+      <NativeTabs.Trigger name="community">
         <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
         <Label>Community</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="reports/index">
+      <NativeTabs.Trigger name="reports">
         <Icon sf={{ default: "doc.text", selected: "doc.text.fill" }} />
         <Label>Reports</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="guests/index">
+      <NativeTabs.Trigger name="guests">
         <Icon sf={{ default: "key", selected: "key.fill" }} />
         <Label>Guests</Label>
       </NativeTabs.Trigger>
@@ -118,8 +118,7 @@ function ClassicTabLayout() {
             ),
         }}
       />
-      <Tabs.Screen name="emergency" options={{ href: null }} />
-      <Tabs.Screen name="settings" options={{ href: null }} />
+
     </Tabs>
   );
 }

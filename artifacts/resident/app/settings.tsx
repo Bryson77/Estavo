@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import ScreenHeader from "@/components/ScreenHeader";
 
 function SettingRow({
   icon,
@@ -76,16 +77,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: topPad + 12 }]}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={12}
-          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
-        >
-          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Settings</Text>
-      </View>
+      <ScreenHeader title="Settings" showBack />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -131,8 +123,9 @@ export default function SettingsScreen() {
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>SUPPORT</Text>
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <SettingRow icon="help-circle-outline" label="Help & FAQ" onPress={() => Alert.alert("Help", "Support portal coming soon.")} />
-          <SettingRow icon="document-text-outline" label="Privacy Policy" onPress={() => {}} />
-          <SettingRow icon="trash-outline" label="Request Data Deletion" onPress={() => router.push("/(tabs)/delete-account" as any)} destructive />
+          <SettingRow icon="document-text-outline" label="Privacy Policy" onPress={() => Alert.alert("Privacy Policy", "Coming soon.")} />
+          <SettingRow icon="document-text-outline" label="Terms of Service" onPress={() => Alert.alert("Terms of Service", "Coming soon.")} />
+          <SettingRow icon="trash-outline" label="Request Data Deletion" onPress={() => router.push("/delete-account" as any)} destructive />
         </View>
 
         {/* Sign out */}
@@ -150,15 +143,6 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingBottom: 12,
-  },
-  backBtn: {},
-  headerTitle: { fontFamily: "Inter_700Bold", fontSize: 18, color: "#FFFFFF" },
   profileCard: {
     flexDirection: "row",
     alignItems: "center",

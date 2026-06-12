@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
+import ScreenHeader from "@/components/ScreenHeader";
 
 const CATEGORIES = [
   { value: "maintenance", label: "Maintenance", icon: "construct-outline" },
@@ -61,14 +62,7 @@ export default function NewReportScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={[styles.topBar, { paddingTop: insets.top + 12, borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={22} color={colors.foreground} />
-          <Text style={[styles.backLabel, { color: colors.foreground }]}>Back</Text>
-        </Pressable>
-        <Text style={[styles.topTitle, { color: colors.foreground }]}>New Report</Text>
-        <View style={{ width: 60 }} />
-      </View>
+      <ScreenHeader title="New Report" showBack />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -155,17 +149,6 @@ export default function NewReportScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 2, width: 60 },
-  backLabel: { fontSize: 16 },
-  topTitle: { fontSize: 17, fontWeight: "600" },
   card: { borderRadius: 14, borderWidth: 1, padding: 16, marginBottom: 12 },
   fieldLabel: { fontSize: 11, fontWeight: "600", letterSpacing: 0.8, marginBottom: 8 },
   catGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

@@ -96,9 +96,7 @@ export default function EmergencyScreen() {
 
   useEffect(() => () => { animRef.current?.stop(); }, []);
 
-  // Animated ring radius (0 → 90 extra px on each side)
-  const ringSize = progress.interpolate({ inputRange: [0, 1], outputRange: [160, 280] });
-  const ringOpacity = progress.interpolate({ inputRange: [0, 0.05, 1], outputRange: [0, 0.5, 0] });
+  const fillWidth = progress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
 
   const initials = user
     ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase()
@@ -174,50 +172,20 @@ export default function EmergencyScreen() {
           Hold the button for 5 seconds to alert all security on duty.
         </Text>
 
-        <View style={styles.holdArea}>
-          {/* Animated expanding ring on press */}
-          <Animated.View
-            style={[
-              styles.ringBase,
-              {
-                width: ringSize,
-                height: ringSize,
-                borderRadius: 200,
-                opacity: ringOpacity,
-              },
-            ]}
-            pointerEvents="none"
-          />
-
-          {/* Idle pulse ring */}
-          {!isHolding && !loading && (
+        <Pressable 
+          onPressIn={startHold} 
+          onPressOut={stopHold}
+          style={styles.holdContainer}
+        >
+          <View style={[styles.holdBox, { backgroundColor: colors.card, borderColor: "#EF4444" }]}>
             <Animated.View
-              style={[
-                styles.pulseRing,
-                { transform: [{ scale: pulseAnim }] },
-              ]}
-              pointerEvents="none"
+              style={[StyleSheet.absoluteFill, { backgroundColor: "#EF4444", width: fillWidth as any }]}
             />
-          )}
-
-          <Pressable onPressIn={startHold} onPressOut={stopHold}>
-            <Animated.View
-              style={[
-                styles.holdCircle,
-                {
-                  backgroundColor: isHolding ? "#DC2626" : "#EF4444",
-                  transform: [{ scale: isHolding ? 1.04 : 1 }],
-                },
-              ]}
-            >
-              <Ionicons name="alarm-outline" size={44} color="#FFFFFF" />
-            </Animated.View>
-          </Pressable>
-        </View>
-
-        <Text style={[styles.holdLabel, { color: "#EF4444" }]}>
-          {loading ? "Alerting…" : isHolding ? "Hold…" : "Hold"}
-        </Text>
+            <Text style={[styles.holdText, { color: isHolding || loading ? "#FFFFFF" : "#EF4444" }]}>
+              {loading ? "Alerting..." : isHolding ? "Holding..." : "Hold to alert security"}
+            </Text>
+          </View>
+        </Pressable>
       </View>
     </View>
   );
@@ -239,43 +207,24 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 40,
   },
-  holdArea: {
-    width: 280,
-    height: 280,
-    alignItems: "center",
-    justifyContent: "center",
+  holdContainer: {
+    width: "100%",
+    height: 80,
+    borderRadius: 40,
+    overflow: "hidden",
   },
-  ringBase: {
-    position: "absolute",
+  holdBox: {
+    flex: 1,
     borderWidth: 2,
-    borderColor: "#EF4444",
-  },
-  pulseRing: {
-    position: "absolute",
-    width: 190,
-    height: 190,
-    borderRadius: 95,
-    borderWidth: 1.5,
-    borderColor: "rgba(239,68,68,0.3)",
-    backgroundColor: "rgba(239,68,68,0.05)",
-  },
-  holdCircle: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#EF4444",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 12,
+    alignItems: "center",
+    borderRadius: 40,
+    overflow: "hidden",
   },
-  holdLabel: {
+  holdText: {
     fontFamily: "Inter_700Bold",
-    fontSize: 16,
-    marginTop: 20,
-    letterSpacing: 0.5,
+    fontSize: 20,
+    zIndex: 1,
   },
   // Confirmed state
   confirmedBody: {

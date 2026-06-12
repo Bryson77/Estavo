@@ -15,6 +15,7 @@ import QRCode from "react-native-qrcode-svg";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
+import ScreenHeader from "@/components/ScreenHeader";
 
 export default function GuestDetailScreen() {
   const colors = useColors();
@@ -59,16 +60,10 @@ Show this code to security on arrival or present it at the entry point.
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.topBar, { paddingTop: insets.top + 12, borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={22} color={colors.foreground} />
-          <Text style={[styles.backLabel, { color: colors.foreground }]}>Back</Text>
-        </Pressable>
-        <Text style={[styles.topTitle, { color: colors.foreground }]}>
-          {code.isParcel ? "Parcel Code" : `${code.guestFirstName}'s Code`}
-        </Text>
-        <View style={{ width: 60 }} />
-      </View>
+      <ScreenHeader 
+        title={code.isParcel ? "Parcel Code" : `${code.guestFirstName}'s Code`} 
+        showBack 
+      />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, alignItems: "center" }}>
         <View style={[styles.qrCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: isExpired ? 0.5 : 1 }]}>
@@ -124,17 +119,6 @@ function InfoRow({ label, value, colors, valueColor }: { label: string; value: s
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 2, width: 60 },
-  backLabel: { fontSize: 16 },
-  topTitle: { fontSize: 17, fontWeight: "600" },
   qrCard: {
     width: 240,
     height: 240,

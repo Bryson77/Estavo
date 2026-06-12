@@ -14,20 +14,23 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import ScreenHeader from "@/components/ScreenHeader";
 
 export default function DeleteAccountScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const [confirmText, setConfirmText] = useState("");
+  
+  const expectedText = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
 
   const handleDelete = () => {
-    if (confirmText !== "DELETE") {
-      Alert.alert("Error", "Please type DELETE to confirm.");
+    if (confirmText.trim().toLowerCase() !== expectedText.toLowerCase()) {
+      Alert.alert("Error", `Please type "${expectedText}" to confirm.`);
       return;
     }
     Alert.alert(
@@ -47,26 +50,21 @@ export default function DeleteAccountScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: topPad + 12 }]}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={12}
-          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
-        >
-          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Delete Account</Text>
-      </View>
+      <ScreenHeader title="Delete Account" showBack />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 20, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 24 }}
       >
         <View style={styles.dangerZone}>
-          <Text style={styles.dangerTitle}>────────────── DANGER ZONE ──────────────</Text>
           <View style={styles.dangerHeaderRow}>
-            <Ionicons name="warning" size={24} color="#EF4444" />
-            <Text style={styles.dangerWarning}>Delete account and all associated data</Text>
+            <View style={styles.iconContainer}>
+              <Ionicons name="warning" size={22} color="#EF4444" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.dangerTitle}>Danger Zone</Text>
+              <Text style={styles.dangerWarning}>Delete account & all data</Text>
+            </View>
           </View>
           <Text style={styles.dangerDesc}>
             This action is irreversible. Your account, guest codes, maintenance history, and gate
@@ -75,14 +73,14 @@ export default function DeleteAccountScreen() {
 
           <View style={styles.confirmBox}>
             <Text style={[styles.confirmPrompt, { color: colors.foreground }]}>
-              Type "DELETE" to confirm.
+              Type "{expectedText}" to confirm.
             </Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.background, color: colors.foreground, borderColor: colors.border }]}
               value={confirmText}
               onChangeText={setConfirmText}
-              autoCapitalize="characters"
-              placeholder="DELETE"
+              autoCapitalize="words"
+              placeholder={expectedText}
               placeholderTextColor={colors.mutedForeground}
             />
           </View>
@@ -90,10 +88,10 @@ export default function DeleteAccountScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.deleteBtn,
-              { opacity: pressed || confirmText !== "DELETE" ? 0.6 : 1 },
+              { opacity: pressed || confirmText.trim().toLowerCase() !== expectedText.toLowerCase() ? 0.6 : 1 },
             ]}
             onPress={handleDelete}
-            disabled={confirmText !== "DELETE"}
+            disabled={confirmText.trim().toLowerCase() !== expectedText.toLowerCase()}
           >
             <Text style={styles.deleteBtnText}>Request Account Deletion</Text>
           </Pressable>
@@ -105,15 +103,6 @@ export default function DeleteAccountScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingBottom: 12,
-  },
-  backBtn: {},
-  headerTitle: { fontFamily: "Inter_700Bold", fontSize: 18, color: "#FFFFFF" },
   dangerZone: {
     marginTop: 20,
     borderWidth: 2,
@@ -124,23 +113,30 @@ const styles = StyleSheet.create({
   },
   dangerTitle: {
     fontFamily: "Inter_700Bold",
-    fontSize: 12,
+    fontSize: 13,
     color: "#EF4444",
-    textAlign: "center",
-    marginBottom: 20,
+    textTransform: "uppercase",
     letterSpacing: 1,
+    marginBottom: 4,
   },
   dangerHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
+    gap: 14,
+    marginBottom: 16,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#EF444420",
+    alignItems: "center",
+    justifyContent: "center",
   },
   dangerWarning: {
     fontFamily: "Inter_700Bold",
     fontSize: 16,
-    color: "#EF4444",
-    flex: 1,
+    color: "#991B1B",
   },
   dangerDesc: {
     fontFamily: "Inter_400Regular",

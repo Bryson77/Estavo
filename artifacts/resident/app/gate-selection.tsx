@@ -19,12 +19,12 @@ export default function GateSelectionScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScreenHeader
         title="Open Gate"
         showBack
         rightIcon="settings-outline"
-        onRightPress={() => router.push("/(tabs)/settings")}
+        onRightPress={() => router.push("/settings")}
       />
       <View style={styles.body}>
         <Text style={[styles.subheading, { color: colors.mutedForeground }]}>
@@ -39,13 +39,16 @@ export default function GateSelectionScreen() {
             onPress={() => handleGatePress("1_entry", "Gate 1 · Entry Gate")}
           >
             <View style={styles.gateInfo}>
-              <Text style={[styles.gateName, { color: colors.foreground }]}>🚪 Entry Gate</Text>
+              <View style={styles.gateNameRow}>
+                <Ionicons name="enter-outline" size={18} color={colors.foreground} />
+                <Text style={[styles.gateName, { color: colors.foreground, marginLeft: 6 }]}>Entry Gate</Text>
+              </View>
               <View style={styles.statusRow}>
                 <View style={[styles.dot, { backgroundColor: "#4CAF50" }]} />
                 <Text style={[styles.statusText, { color: colors.mutedForeground }]}>Online</Text>
               </View>
             </View>
-            <Text style={[styles.actionText, { color: colors.primary }]}>Hold to open →</Text>
+            <Text style={[styles.actionText, { color: colors.primary }]}>Select →</Text>
           </Pressable>
 
           <Pressable 
@@ -53,13 +56,16 @@ export default function GateSelectionScreen() {
             onPress={() => handleGatePress("1_exit", "Gate 1 · Exit Gate")}
           >
             <View style={styles.gateInfo}>
-              <Text style={[styles.gateName, { color: colors.foreground }]}>🚪 Exit Gate</Text>
+              <View style={styles.gateNameRow}>
+                <Ionicons name="exit-outline" size={18} color={colors.foreground} />
+                <Text style={[styles.gateName, { color: colors.foreground, marginLeft: 6 }]}>Exit Gate</Text>
+              </View>
               <View style={styles.statusRow}>
                 <View style={[styles.dot, { backgroundColor: "#4CAF50" }]} />
                 <Text style={[styles.statusText, { color: colors.mutedForeground }]}>Online</Text>
               </View>
             </View>
-            <Text style={[styles.actionText, { color: colors.primary }]}>Hold to open →</Text>
+            <Text style={[styles.actionText, { color: colors.primary }]}>Select →</Text>
           </Pressable>
         </View>
       </View>
@@ -75,7 +81,8 @@ const styles = StyleSheet.create({
   groupTitle: { fontSize: 18, fontWeight: "600", marginBottom: 16 },
   gateRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 16 },
   gateInfo: { flex: 1 },
-  gateName: { fontSize: 16, fontWeight: "500", marginBottom: 4 },
+  gateNameRow: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
+  gateName: { fontSize: 16, fontWeight: "500" },
   statusRow: { flexDirection: "row", alignItems: "center" },
   dot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
   statusText: { fontSize: 14 },

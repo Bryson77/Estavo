@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
+import ScreenHeader from "@/components/ScreenHeader";
 
 const POST_TYPES = [
   { value: "general", label: "General" },
@@ -55,19 +56,7 @@ export default function NewPostScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={[styles.topBar, { paddingTop: insets.top + 12, borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="close" size={22} color={colors.foreground} />
-        </Pressable>
-        <Text style={[styles.topTitle, { color: colors.foreground }]}>New Post</Text>
-        <Pressable
-          style={[styles.postBtn, { backgroundColor: loading || !content.trim() ? colors.muted : colors.primary }]}
-          onPress={handlePost}
-          disabled={loading || !content.trim()}
-        >
-          <Text style={styles.postBtnText}>{loading ? "Posting..." : "Post"}</Text>
-        </Pressable>
-      </View>
+      <ScreenHeader title="New Post" showBack />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
         <TextInput
@@ -113,6 +102,14 @@ export default function NewPostScreen() {
             trackColor={{ true: colors.primary }}
           />
         </View>
+
+        <Pressable
+          style={[styles.submitBtn, { backgroundColor: loading || !content.trim() ? colors.muted : colors.primary }]}
+          onPress={handlePost}
+          disabled={loading || !content.trim()}
+        >
+          <Text style={styles.submitBtnText}>{loading ? "Posting..." : "Post to Community"}</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -120,18 +117,6 @@ export default function NewPostScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
-  backBtn: { width: 40, alignItems: "flex-start" },
-  topTitle: { fontSize: 17, fontWeight: "600" },
-  postBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  postBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   contentInput: {
     borderWidth: 1,
     borderRadius: 14,
@@ -155,7 +140,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
+    marginBottom: 24,
   },
   toggleLabel: { fontSize: 16, fontWeight: "600" },
   toggleSub: { fontSize: 13, marginTop: 2 },
+  submitBtn: { borderRadius: 14, padding: 16, alignItems: "center" },
+  submitBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 });

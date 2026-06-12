@@ -1,5 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { Alert } from "react-native";
+import { setOnAuthError } from "../lib/api";
 
 const TOKEN_KEY = "@estatehq_token";
 const USER_KEY = "@estatehq_user";
@@ -81,6 +83,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, [token]);
 
+  useEffect(() => {
+    setOnAuthError(() => {
+      Alert.alert("Session Expired", "Your session is invalid or has expired. Please log in again.");
+      logout();
+    });
+  }, [logout]);
 
   const refreshUser = useCallback(async () => {
     if (!token) return;

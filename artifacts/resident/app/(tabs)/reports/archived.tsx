@@ -9,7 +9,7 @@ export default function ArchivedReportsScreen() {
   const insets = useSafeAreaInsets();
   
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScreenHeader title="Archived Tickets" showBack />
       <View style={styles.body}>
         <Text style={[styles.text, { color: colors.foreground }]}>Archived tickets will appear here.</Text>
