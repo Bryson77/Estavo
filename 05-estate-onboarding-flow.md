@@ -1,4 +1,4 @@
-# EstateHQ — Estate Onboarding Flow
+# Estavo — Estate Onboarding Flow
 **Process:** Adding a new estate via Superadmin Portal
 **Version:** 1.0 | June 2026
 
@@ -96,7 +96,7 @@ VALUES (...) FOR EACH gate;
   "estate_id": "uuid",
   "gate_id": "uuid",
   "device_key": "uuid",
-  "api_endpoint": "https://api.estatehq.co.za/gate/command",
+  "api_endpoint": "https://api.estavo.co.za/gate/command",
   "heartbeat_interval_seconds": 30
 }
 ```
@@ -255,11 +255,11 @@ INSERT INTO profiles (
 
 **Invite email content (sent via Resend):**
 ```
-Subject: You've been invited to [Estate Name] on EstateHQ
+Subject: You've been invited to [Estate Name] on Estavo
 
 Hi [Name],
 
-[Estate Name] is now on EstateHQ — a platform to manage your 
+[Estate Name] is now on Estavo — a platform to manage your 
 gate access, report maintenance, and stay connected with your estate.
 
 Click below to set up your account:
@@ -268,7 +268,7 @@ Click below to set up your account:
 Your unit: [Unit No]
 Estate: [Estate Name]
 
-– The EstateHQ Team
+– The Estavo Team
 ```
 
 ---
@@ -290,19 +290,19 @@ Staff accounts created. Invite emails sent. Staff activate via magic link.
 
 **Staff email:**
 ```
-Subject: You've been set up on EstateHQ Staff — [Estate Name]
+Subject: You've been set up on Estavo Staff — [Estate Name]
 
 Hi [Name],
 
-You've been added as [Role] at [Estate Name] on EstateHQ.
+You've been added as [Role] at [Estate Name] on Estavo.
 
-Click below to activate your EstateHQ Staff app account:
+Click below to activate your Estavo Staff app account:
 [Activate account] → magic link
 
-Download the EstateHQ Staff app:
+Download the Estavo Staff app:
 [App Store]   [Google Play]
 
-– EstateHQ
+– Estavo
 ```
 
 **What this creates:**

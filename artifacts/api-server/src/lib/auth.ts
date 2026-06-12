@@ -148,7 +148,7 @@ export async function requireAuth(
 
 /**
  * Platform-project auth middleware.
- * Verifies the Bearer token against the estatehq-platform Supabase project,
+ * Verifies the Bearer token against the estavo-platform Supabase project,
  * enforces aal2 (TOTP MFA), and checks the user is an active platform admin.
  */
 export async function requirePlatformAuth(

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EstateHQ — Superadmin",
-  description: "Internal operations portal for EstateHQ platform administration.",
+  title: "Estavo — Superadmin",
+  description: "Internal operations portal for Estavo platform administration.",
 };
 
 export default function RootLayout({

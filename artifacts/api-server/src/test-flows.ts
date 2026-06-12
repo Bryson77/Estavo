@@ -40,8 +40,8 @@ async function runTests() {
 
   try {
     // 1. Setup Test Data
-    const dummyEmail = `test.resident.${Date.now()}@estatehq.co.za`;
-    const dummyAdminEmail = `test.admin.${Date.now()}@estatehq.co.za`;
+    const dummyEmail = `test.resident.${Date.now()}@estavo.co.za`;
+    const dummyAdminEmail = `test.admin.${Date.now()}@estavo.co.za`;
     
     // Create Estate
     const { data: estate, error: estErr } = await supabasePlatform.from('estates').insert({

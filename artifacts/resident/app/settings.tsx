@@ -77,7 +77,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <ScreenHeader title="Settings" showBack />
+      <ScreenHeader title="Settings" showBack rightIcon="" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -134,7 +134,7 @@ export default function SettingsScreen() {
         </View>
 
         <Text style={[styles.version, { color: colors.mutedForeground }]}>
-          EstateHQ Resident v1.0.0
+          Estavo Resident v1.0.0
         </Text>
       </ScrollView>
     </View>

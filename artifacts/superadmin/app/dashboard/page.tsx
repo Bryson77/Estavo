@@ -143,7 +143,7 @@ export default async function DashboardPage() {
           Platform Overview
         </h1>
         <p className="text-sm mt-1" style={{ color: "var(--sa-text-muted)" }}>
-          EstateHQ SaaS metrics and estate management
+          Estavo SaaS metrics and estate management
         </p>
       </div>
 

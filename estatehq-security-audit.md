@@ -1,7 +1,7 @@
-# EstateHQ — Security Audit & Build Verification
+# Estavo — Security Audit & Build Verification
 **Strict Checklist · Pre-Launch Required · v1.0**
 
-> This document is a hard gate — not a guideline. Every item below must pass before production traffic hits any EstateHQ surface. Items marked 🔴 are launch blockers. Items marked 🟡 are high-priority post-launch if not completed. Nothing ships until all 🔴 items are signed off.
+> This document is a hard gate — not a guideline. Every item below must pass before production traffic hits any Estavo surface. Items marked 🔴 are launch blockers. Items marked 🟡 are high-priority post-launch if not completed. Nothing ships until all 🔴 items are signed off.
 
 ---
 
@@ -95,7 +95,7 @@
 
 ## 2. DATABASE & ROW LEVEL SECURITY (RLS)
 
-**Critical note:** EstateHQ uses TWO separate Supabase projects. Resident-facing data is on Project A. Internal/operational data is on Project B. Verify isolation is maintained at all times.
+**Critical note:** Estavo uses TWO separate Supabase projects. Resident-facing data is on Project A. Internal/operational data is on Project B. Verify isolation is maintained at all times.
 
 ### 2.1 RLS Policy Completeness
 
@@ -181,7 +181,7 @@ grep -r "SUPABASE_SERVICE" .next/
 
 ### 3.4 CORS
 
-- [ ] 🔴 **CORS origin whitelist** — only `estatehq.co.za` and subdomains allowed, plus `localhost:3000` for dev
+- [ ] 🔴 **CORS origin whitelist** — only `estavo.co.za` and subdomains allowed, plus `localhost:3000` for dev
 - [ ] 🔴 **No wildcard `*` CORS in production**
 - [ ] 🔴 **Preflight OPTIONS requests handled correctly**
 
@@ -194,7 +194,7 @@ grep -r "SUPABASE_SERVICE" .next/
 - [ ] 🔴 **Raspberry Pi units communicate with backend over HTTPS only** — no HTTP
 - [ ] 🔴 **Raspberry Pi has a unique device certificate / API key per estate** — not a shared key
 - [ ] 🔴 **Device keys are rotatable** — if a Pi is compromised, key can be revoked without affecting other estates
-- [ ] 🔴 **Pi cannot be commanded from the internet directly** — all commands go through EstateHQ backend which validates the request before forwarding
+- [ ] 🔴 **Pi cannot be commanded from the internet directly** — all commands go through Estavo backend which validates the request before forwarding
 - [ ] 🔴 **Gate open commands include a nonce** — prevents replay attacks (same command cannot be replayed to open gate again)
 - [ ] 🔴 **Command timestamp validated within ±30 second window** — expired commands rejected
 - [ ] 🟡 **Pi hardware in locked, tamper-evident enclosure**
@@ -236,7 +236,7 @@ grep -r "SUPABASE_SERVICE" .next/
 
 ## 6. DATA ISOLATION (MULTI-TENANT)
 
-**This is the single most critical security property of EstateHQ. A breach of tenant isolation — where Estate A can read Estate B's data — is a catastrophic failure.**
+**This is the single most critical security property of Estavo. A breach of tenant isolation — where Estate A can read Estate B's data — is a catastrophic failure.**
 
 - [ ] 🔴 **Every query in the application includes `estate_id` filter** — audit every single DB query in the codebase
 - [ ] 🔴 **`estate_id` is never trusted from the client** — always derived from the authenticated user's JWT claims server-side
@@ -342,7 +342,7 @@ grep -r "SUPABASE_SERVICE" .next/
 ### 10.3 Supabase
 
 - [ ] 🔴 **Two separate Supabase projects confirmed** — resident data vs operational data fully isolated
-- [ ] 🔴 **Supabase dashboard login uses strong password + MFA for EstateHQ team**
+- [ ] 🔴 **Supabase dashboard login uses strong password + MFA for Estavo team**
 - [ ] 🔴 **Database backups enabled and tested** — verify restore works at least once
 - [ ] 🔴 **Connection pooling configured** — Supavisor or PgBouncer, not direct connections from workers
 - [ ] 🟡 **Read replicas configured** if dashboard read load is high
@@ -376,7 +376,7 @@ grep -r "SUPABASE_SERVICE" .next/
 
 ### 11.2 Turborepo Monorepo Verification
 
-- [ ] 🔴 **Shared packages (`@estatehq/ui`, `@estatehq/types`) versioned correctly** — breaking changes require coordinated deploy
+- [ ] 🔴 **Shared packages (`@estavo/ui`, `@estavo/types`) versioned correctly** — breaking changes require coordinated deploy
 - [ ] 🔴 **`turbo.json` pipeline does not leak dev dependencies to production builds**
 - [ ] 🔴 **Each app's `package.json` does not include the other app's private packages**
 - [ ] 🔴 **Build output verified: resident app bundle does not include security app code, dashboard bundle does not include superadmin code**

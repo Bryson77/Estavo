@@ -92,7 +92,7 @@ export default function OpsLayout({
                 className="text-sm font-bold leading-tight"
                 style={{ color: "var(--sa-text)" }}
               >
-                EstateHQ
+                Estavo
               </div>
               <div
                 className="text-[10px] uppercase tracking-[0.15em] font-medium"
@@ -138,7 +138,7 @@ export default function OpsLayout({
                 className="text-xs font-medium truncate"
                 style={{ color: "var(--sa-text-secondary)" }}
               >
-                admin@estatehq.co.za
+                admin@estavo.co.za
               </div>
               <div
                 className="text-[10px] uppercase tracking-[0.1em]"

@@ -52,7 +52,7 @@ export default function LoginPage() {
             className="text-xl font-bold tracking-tight"
             style={{ color: "var(--sa-text)", letterSpacing: "-0.02em" }}
           >
-            EstateHQ
+            Estavo
           </h1>
           <p
             className="text-xs mt-1.5 uppercase tracking-[0.2em] font-medium"
@@ -89,7 +89,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="admin@estatehq.co.za"
+              placeholder="admin@estavo.co.za"
               className="w-full px-4 py-3 rounded-lg text-sm transition-colors"
               style={{
                 background: "var(--sa-input-bg)",
@@ -158,7 +158,7 @@ export default function LoginPage() {
           className="text-center text-[11px] mt-8"
           style={{ color: "var(--sa-text-dim)" }}
         >
-          EstateHQ Platform · Internal Use Only
+          Estavo Platform · Internal Use Only
         </p>
       </div>
     </div>

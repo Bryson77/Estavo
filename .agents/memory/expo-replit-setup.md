@@ -20,7 +20,7 @@ Expo web runs at `expo.worf.replit.dev`, the API at `worf.replit.dev` — differ
 Use `cors({ origin: true, credentials: true, methods: [...], allowedHeaders: [...] })` in Express (not `cors()` with no options, which also works but `origin: true` is explicit).
 
 ## Dev login credentials
-- Email: `thandi@estatehq.app`
+- Email: `thandi@estavo.app`
 - OTP bypass: `123456` (when `NODE_ENV=development`)
 
 ## Remaining known warnings (from deps, not our code)

@@ -23,11 +23,11 @@
 
 \#\# 1\. ARCHITECTURE OVERVIEW
 
-EstateHQ operates on a dual-database architecture. Two completely separate Supabase projects. No shared tables. No shared auth. No shared connections.
+Estavo operates on a dual-database architecture. Two completely separate Supabase projects. No shared tables. No shared auth. No shared connections.
 
 \`\`\`  
 ┌─────────────────────────────────────────────────────────┐  
-│  ESTATEHQ-APP (Supabase Project 1 — EU West Frankfurt)  │  
+│  ESTAVO-APP (Supabase Project 1 — EU West Frankfurt)  │  
 │                                                         │  
 │  All estate operational data                            │  
 │  Residents, staff, managers, trustees                   │  
@@ -43,7 +43,7 @@ EstateHQ operates on a dual-database architecture. Two completely separate Supab
 └─────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────┐  
-│  ESTATEHQ-OPS (Supabase Project 2 — EU West Frankfurt)  │  
+│  ESTAVO-OPS (Supabase Project 2 — EU West Frankfurt)  │  
 │                                                         │  
 │  Internal operations only                               │  
 │  Superadmin user accounts                               │  
@@ -55,16 +55,16 @@ EstateHQ operates on a dual-database architecture. Two completely separate Supab
 \`\`\`
 
 \*\*Why two projects:\*\*  
-If \`estatehq-app\` is ever compromised, the internal audit trail and operator data in \`estatehq-ops\` is untouched on a completely separate project with separate credentials. Support staff access \`estatehq-ops\` without ever touching production estate data unless explicitly granted.
+If \`estavo-app\` is ever compromised, the internal audit trail and operator data in \`estavo-ops\` is untouched on a completely separate project with separate credentials. Support staff access \`estavo-ops\` without ever touching production estate data unless explicitly granted.
 
-\*\*The service role key for \`estatehq-app\`\*\* lives exclusively in \`estatehq-ops\` server-side Next.js functions. It is never in a browser, never in a mobile app, never in an environment variable that a client can read.
+\*\*The service role key for \`estavo-app\`\*\* lives exclusively in \`estavo-ops\` server-side Next.js functions. It is never in a browser, never in a mobile app, never in an environment variable that a client can read.
 
 \---
 
 \#\# 2\. FOLDER STRUCTURE
 
 \`\`\`  
-estatehq/                               ← Turborepo monorepo root  
+estavo/                               ← Turborepo monorepo root  
 │  
 ├── apps/  
 │   ├── resident/                       ← React Native (Expo) — iOS \+ Android  
@@ -141,7 +141,7 @@ estatehq/                               ← Turborepo monorepo root
 │   │   │   └── stripe/                 ← Stripe helpers  
 │   │   └── middleware.ts               ← Route protection \+ role enforcement  
 │   │  
-│   ├── corporate/                      ← Next.js 14 — corporate.estatehq.co.za  
+│   ├── corporate/                      ← Next.js 14 — corporate.estavo.co.za  
 │   │   ├── app/  
 │   │   │   ├── (auth)/  
 │   │   │   └── (dashboard)/  
@@ -153,7 +153,7 @@ estatehq/                               ← Turborepo monorepo root
 │   │   ├── components/  
 │   │   └── middleware.ts  
 │   │  
-│   └── superadmin/                     ← Next.js 14 — ops.estatehq.co.za  
+│   └── superadmin/                     ← Next.js 14 — ops.estavo.co.za  
 │       ├── app/  
 │       │   ├── (auth)/  
 │       │   └── (ops)/  
@@ -269,8 +269,8 @@ estatehq/                               ← Turborepo monorepo root
 | Web apps | Next.js | 14 (App Router) | Management, Corporate, Ops |  
 | Monorepo | Turborepo | Latest | Shared packages across all apps |  
 | Language | TypeScript | 5.x strict | All apps, all packages, no JavaScript |  
-| Auth \+ DB | Supabase | Latest | \`estatehq-app\` project, EU West |  
-| Admin DB | Supabase | Latest | \`estatehq-ops\` project, EU West |  
+| Auth \+ DB | Supabase | Latest | \`estavo-app\` project, EU West |  
+| Admin DB | Supabase | Latest | \`estavo-ops\` project, EU West |  
 | File storage | Supabase Storage | — | Report photos, logos, documents |  
 | Realtime | Supabase Realtime | — | Emergency alerts, gate logs, reports |  
 | Edge Functions | Supabase Edge Functions (Deno) | — | Gate trigger, notifications, AI, cron |  
@@ -284,7 +284,7 @@ estatehq/                               ← Turborepo monorepo root
 | CDN \+ WAF | Cloudflare Pro | — | All web properties |  
 | Zero Trust | Cloudflare Access | — | Ops portal only |  
 | Web hosting | Vercel | — | Management, Corporate, Ops |  
-| Marketing | Cloudflare Pages | — | estatehq.co.za |  
+| Marketing | Cloudflare Pages | — | estavo.co.za |  
 | CI/CD | GitHub Actions \+ Vercel \+ EAS | — | Auto-deploy on push |  
 | Input validation | Zod | Latest | All API inputs, all Edge Functions |  
 | State (mobile) | Zustand | Latest | Lightweight, no Redux |  
@@ -294,11 +294,11 @@ estatehq/                               ← Turborepo monorepo root
 
 \#\# 4\. ESTATE ISOLATION — HOW IT WORKS
 
-This is the most critical security concept in EstateHQ. Every estate's data is completely isolated from every other estate. This is enforced at four layers simultaneously.
+This is the most critical security concept in Estavo. Every estate's data is completely isolated from every other estate. This is enforced at four layers simultaneously.
 
 \#\#\# Layer 1 — Database (Row-Level Security)
 
-Every table in \`estatehq-app\` has \`estate\_id UUID NOT NULL\`. RLS policies are enabled on every table with default deny — if no policy matches, the query returns zero rows.
+Every table in \`estavo-app\` has \`estate\_id UUID NOT NULL\`. RLS policies are enabled on every table with default deny — if no policy matches, the query returns zero rows.
 
 \`\`\`sql  
 \-- Example: residents table  
@@ -1107,7 +1107,7 @@ CREATE TABLE push\_tokens (
 );
 
 \-- ══════════════════════════════════════════════════════  
-\-- SYSTEM FAILURE LOGS (estatehq-ops project)  
+\-- SYSTEM FAILURE LOGS (estavo-ops project)  
 \-- ══════════════════════════════════════════════════════  
 CREATE TABLE system\_failures (  
   id uuid PRIMARY KEY DEFAULT gen\_random\_uuid(),  
@@ -1128,7 +1128,7 @@ CREATE TABLE system\_failures (
 );
 
 \-- ══════════════════════════════════════════════════════  
-\-- AUDIT LOGS (estatehq-ops project — INSERT only)  
+\-- AUDIT LOGS (estavo-ops project — INSERT only)  
 \-- ══════════════════════════════════════════════════════  
 CREATE TABLE audit\_logs (  
   id uuid PRIMARY KEY DEFAULT gen\_random\_uuid(),  
@@ -1145,7 +1145,7 @@ CREATE TABLE audit\_logs (
 \-- No UPDATE or DELETE policies. Append-only forever.
 
 \-- ══════════════════════════════════════════════════════  
-\-- ONBOARDING PROGRESS (estatehq-ops project)  
+\-- ONBOARDING PROGRESS (estavo-ops project)  
 \-- ══════════════════════════════════════════════════════  
 CREATE TABLE onboarding\_progress (  
   id uuid PRIMARY KEY DEFAULT gen\_random\_uuid(),  
@@ -1567,7 +1567,7 @@ Thumbnails: Supabase Image Transform at 300×300px for all list views. Full reso
 
 \#\# 12\. ERROR TAXONOMY
 
-All errors logged to \`system\_failures\` in \`estatehq-ops\`. Visible in Ops dashboard failure log.
+All errors logged to \`system\_failures\` in \`estavo-ops\`. Visible in Ops dashboard failure log.
 
 \`\`\`  
 GATE  
@@ -1654,7 +1654,7 @@ DATA
 
 \#\#\# Infrastructure  
 \- Cloudflare WAF (Pro): blocks SQLi, XSS, CSRF before hitting app  
-\- Cloudflare Zero Trust on \`ops.estatehq.co.za\` — approved emails only  
+\- Cloudflare Zero Trust on \`ops.estavo.co.za\` — approved emails only  
 \- Cloudflare DDoS: automatic, included in Pro plan  
 \- GitHub Dependabot: automatic vulnerability alerts  
 \- \`npm audit\` before every production deployment

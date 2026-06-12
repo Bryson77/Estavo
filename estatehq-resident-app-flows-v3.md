@@ -1,4 +1,4 @@
-# EstateHQ — Resident App UI & Screen Flows
+# Estavo — Resident App UI & Screen Flows
 **Surface:** React Native (Expo) · iOS + Android
 **Version:** 3.0 | Updated: June 2026
 **Audience:** AI builder (Opus), developers, and design implementers
@@ -7,7 +7,7 @@
 
 ## CRITICAL READING: How to Use This Document
 
-This document describes every screen, every interaction, and every navigation route in the EstateHQ Resident App. Each section is written to answer three questions:
+This document describes every screen, every interaction, and every navigation route in the Estavo Resident App. Each section is written to answer three questions:
 
 1. **What does this screen look like?**
 2. **What can the user do here?**
@@ -91,7 +91,7 @@ There is no biometric lock. There is no PIN screen. Session persists until the u
 ### 2.2 WELCOME_SCREEN
 
 **What the user sees:**
-- EstateHQ logo, centered
+- Estavo logo, centered
 - Tagline: "One Platform. Everything Your Estate Runs On."
 - A single primary button: **"Get Started"**
 
@@ -804,7 +804,7 @@ Uses: 3 remaining
 
 Show this code to security on arrival or present it at the entry point.
 
-– EstateHQ
+– Estavo
 ```
 
 - When the resident dismisses this screen, the new code appears at the top of the active codes list on `GUESTS_SCREEN`.

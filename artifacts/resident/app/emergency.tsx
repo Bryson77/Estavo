@@ -135,7 +135,11 @@ export default function EmergencyScreen() {
               style={styles.cancelBtn}
               onPress={() => {
                 // Mock sending cancellation
-                router.back();
+                setTriggered(false);
+                setEmergencyRef(null);
+                setUndoCountdown(5);
+                progress.setValue(0);
+                completedRef.current = false;
               }}
             >
               <Text style={styles.cancelBtnText}>Undo ({undoCountdown}s)</Text>
@@ -161,13 +165,14 @@ export default function EmergencyScreen() {
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <ScreenHeader
         title="Emergency"
-        subtitle="ESTATEHQ"
+        subtitle="ESTAVO"
         showBack
         showAvatar={false}
         headerBg={colors.primary}
       />
 
       <View style={styles.body}>
+        <Ionicons name="shield-checkmark" size={120} color="#EF444415" style={{ marginBottom: 24 }} />
         <Text style={[styles.instruction, { color: colors.mutedForeground }]}>
           Hold the button for 5 seconds to alert all security on duty.
         </Text>

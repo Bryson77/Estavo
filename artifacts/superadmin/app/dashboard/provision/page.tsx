@@ -106,7 +106,7 @@ export default function ProvisionPage() {
           Provision New Estate
         </h1>
         <p className="text-sm mt-1" style={{ color: "var(--sa-text-muted)" }}>
-          Register a new estate on the EstateHQ platform
+          Register a new estate on the Estavo platform
         </p>
       </div>
 

@@ -133,7 +133,7 @@ router.get("/auth/reset-password", (req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Set Your Password - EstateHQ</title>
+  <title>Set Your Password - Estavo</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0F1923; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }

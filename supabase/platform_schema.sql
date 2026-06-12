@@ -1,5 +1,5 @@
--- EstateHQ Platform Database Schema
--- Run this in your Supabase SQL editor (estatehq-platform project)
+-- Estavo Platform Database Schema
+-- Run this in your Supabase SQL editor (estavo-platform project)
 -- This is the billing / superadmin project
 -- ============================================================
 

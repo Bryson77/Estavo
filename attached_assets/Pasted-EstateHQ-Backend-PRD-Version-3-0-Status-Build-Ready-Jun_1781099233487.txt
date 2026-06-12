@@ -1,4 +1,4 @@
-EstateHQ — Backend PRD
+Estavo — Backend PRD
 Version: 3.0 | Status: Build Ready | June 2026
 
 TABLE OF CONTENTS
@@ -21,10 +21,10 @@ Security Hardening (Full)
 Error Taxonomy
 CI/CD & Deployment
 1. ARCHITECTURE OVERVIEW
-EstateHQ operates on a dual-database architecture. Two completely separate Supabase projects. No shared tables. No shared auth. No shared connections.
+Estavo operates on a dual-database architecture. Two completely separate Supabase projects. No shared tables. No shared auth. No shared connections.
 
 ┌─────────────────────────────────────────────────────────┐
-│  ESTATEHQ-APP (Supabase Project 1 — EU West Frankfurt)  │
+│  ESTAVO-APP (Supabase Project 1 — EU West Frankfurt)  │
 │                                                         │
 │  All estate operational data                            │
 │  Residents, staff, managers, trustees                   │
@@ -39,7 +39,7 @@ EstateHQ operates on a dual-database architecture. Two completely separate Supab
 │  Realtime scoped to estate_id                           │
 └─────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────┐
-│  ESTATEHQ-OPS (Supabase Project 2 — EU West Frankfurt)  │
+│  ESTAVO-OPS (Supabase Project 2 — EU West Frankfurt)  │
 │                                                         │
 │  Internal operations only                               │
 │  Superadmin user accounts                               │
@@ -50,12 +50,12 @@ EstateHQ operates on a dual-database architecture. Two completely separate Supab
 └─────────────────────────────────────────────────────────┘
 
 Why two projects:
-If estatehq-app is ever compromised, the internal audit trail and operator data in estatehq-ops is untouched on a completely separate project with separate credentials. Support staff access estatehq-ops without ever touching production estate data unless explicitly granted.
+If estavo-app is ever compromised, the internal audit trail and operator data in estavo-ops is untouched on a completely separate project with separate credentials. Support staff access estavo-ops without ever touching production estate data unless explicitly granted.
 
-The service role key for estatehq-app lives exclusively in estatehq-ops server-side Next.js functions. It is never in a browser, never in a mobile app, never in an environment variable that a client can read.
+The service role key for estavo-app lives exclusively in estavo-ops server-side Next.js functions. It is never in a browser, never in a mobile app, never in an environment variable that a client can read.
 
 2. FOLDER STRUCTURE
-estatehq/                               ← Turborepo monorepo root
+estavo/                               ← Turborepo monorepo root
 │
 ├── apps/
 │   ├── resident/                       ← React Native (Expo) — iOS + Android
@@ -132,7 +132,7 @@ estatehq/                               ← Turborepo monorepo root
 │   │   │   └── stripe/                 ← Stripe helpers
 │   │   └── middleware.ts               ← Route protection + role enforcement
 │   │
-│   ├── corporate/                      ← Next.js 14 — corporate.estatehq.co.za
+│   ├── corporate/                      ← Next.js 14 — corporate.estavo.co.za
 │   │   ├── app/
 │   │   │   ├── (auth)/
 │   │   │   └── (dashboard)/
@@ -144,7 +144,7 @@ estatehq/                               ← Turborepo monorepo root
 │   │   ├── components/
 │   │   └── middleware.ts
 │   │
-│   └── superadmin/                     ← Next.js 14 — ops.estatehq.co.za
+│   └── superadmin/                     ← Next.js 14 — ops.estavo.co.za
 │       ├── app/
 │       │   ├── (auth)/
 │       │   └── (ops)/
@@ -255,8 +255,8 @@ Mobile apps	React Native (Expo)	SDK 52	iOS + Android, single codebase per app
 Web apps	Next.js	14 (App Router)	Management, Corporate, Ops
 Monorepo	Turborepo	Latest	Shared packages across all apps
 Language	TypeScript	5.x strict	All apps, all packages, no JavaScript
-Auth + DB	Supabase	Latest	estatehq-app project, EU West
-Admin DB	Supabase	Latest	estatehq-ops project, EU West
+Auth + DB	Supabase	Latest	estavo-app project, EU West
+Admin DB	Supabase	Latest	estavo-ops project, EU West
 File storage	Supabase Storage	—	Report photos, logos, documents
 Realtime	Supabase Realtime	—	Emergency alerts, gate logs, reports
 Edge Functions	Supabase Edge Functions (Deno)	—	Gate trigger, notifications, AI, cron
@@ -270,16 +270,16 @@ AI	Claude API (Anthropic)	claude-haiku-4-5 / claude-sonnet-4	Report classificati
 CDN + WAF	Cloudflare Pro	—	All web properties
 Zero Trust	Cloudflare Access	—	Ops portal only
 Web hosting	Vercel	—	Management, Corporate, Ops
-Marketing	Cloudflare Pages	—	estatehq.co.za
+Marketing	Cloudflare Pages	—	estavo.co.za
 CI/CD	GitHub Actions + Vercel + EAS	—	Auto-deploy on push
 Input validation	Zod	Latest	All API inputs, all Edge Functions
 State (mobile)	Zustand	Latest	Lightweight, no Redux
 State (web)	React Query (TanStack)	v5	Server state, cache, optimistic updates
 4. ESTATE ISOLATION — HOW IT WORKS
-This is the most critical security concept in EstateHQ. Every estate's data is completely isolated from every other estate. This is enforced at four layers simultaneously.
+This is the most critical security concept in Estavo. Every estate's data is completely isolated from every other estate. This is enforced at four layers simultaneously.
 
 Layer 1 — Database (Row-Level Security)
-Every table in estatehq-app has estate_id UUID NOT NULL. RLS policies are enabled on every table with default deny — if no policy matches, the query returns zero rows.
+Every table in estavo-app has estate_id UUID NOT NULL. RLS policies are enabled on every table with default deny — if no policy matches, the query returns zero rows.
 
 -- Example: residents table
 -- Estate A's manager CANNOT query Estate B's residents
@@ -1013,6 +1013,6 @@ Show less
 2 hours ago
 
 1 message & 1 action
-Which part of EstateHQ do you want to build first?
+Which part of Estavo do you want to build first?
 
 Resident mobile app (Expo — gate, guests, reports)

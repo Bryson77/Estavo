@@ -1,4 +1,4 @@
-# EstateHQ — Platform Setup Guide
+# Estavo — Platform Setup Guide
 **Version:** 1.0 | **June 2026**
 All steps you can action yourself. No developer required beyond you.
 
@@ -24,8 +24,8 @@ All steps you can action yourself. No developer required beyond you.
 Before anything:
 
 1. **Register domains:**
-   - `estatehq.co.za` — production
-   - `estatehq.dev` — staging/dev (optional but recommended)
+   - `estavo.co.za` — production
+   - `estavo.dev` — staging/dev (optional but recommended)
    - Register at [domains.co.za](https://www.domains.co.za) or [afrihost.com](https://www.afrihost.com)
 
 2. **Create accounts on all platforms first (no setup yet):**
@@ -33,7 +33,7 @@ Before anything:
    - [cloudflare.com](https://cloudflare.com) — one account
    - [twilio.com](https://twilio.com)
    - [resend.com](https://resend.com)
-   - [github.com](https://github.com) — create organisation: `estatehq-dev`
+   - [github.com](https://github.com) — create organisation: `estavo-dev`
    - [expo.dev](https://expo.dev)
 
 3. **Move your domain DNS to Cloudflare:**
@@ -47,10 +47,10 @@ Before anything:
 
 You need **two Supabase projects**. Do not combine them.
 
-### Project 1: `estatehq-app`
+### Project 1: `estavo-app`
 Operational data: residents, levies, gate logs, maintenance.
 
-### Project 2: `estatehq-platform`
+### Project 2: `estavo-platform`
 Billing, estate provisioning, superadmin.
 
 ---
@@ -58,14 +58,14 @@ Billing, estate provisioning, superadmin.
 ### 1.1 Create Both Projects
 
 1. Go to [app.supabase.com](https://app.supabase.com)
-2. **New Project** → Organisation: Personal (or create an "EstateHQ" org)
+2. **New Project** → Organisation: Personal (or create an "Estavo" org)
 3. **Project 1:**
-   - Name: `estatehq-app`
+   - Name: `estavo-app`
    - Database password: Generate a strong one, save it in a password manager
    - Region: **Europe West (eu-west-1)** — closest available to SA at present
    - Plan: Free
 4. **Project 2:**
-   - Name: `estatehq-platform`
+   - Name: `estavo-platform`
    - Same region
 5. Wait for both to spin up (~2 min each)
 
@@ -76,12 +76,12 @@ Billing, estate provisioning, superadmin.
 For each project, go to **Settings → API** and save:
 
 ```
-# estatehq-app
+# estavo-app
 NEXT_PUBLIC_SUPABASE_APP_URL=https://xxxxxxxxxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_APP_ANON_KEY=eyJ...
 SUPABASE_APP_SERVICE_ROLE_KEY=eyJ...   ← NEVER expose this client-side
 
-# estatehq-platform
+# estavo-platform
 NEXT_PUBLIC_SUPABASE_PLATFORM_URL=https://yyyyyyyyyyyy.supabase.co
 NEXT_PUBLIC_SUPABASE_PLATFORM_ANON_KEY=eyJ...
 SUPABASE_PLATFORM_SERVICE_ROLE_KEY=eyJ...
@@ -93,7 +93,7 @@ Store these in:
 
 ---
 
-### 1.3 Configure Auth — `estatehq-app`
+### 1.3 Configure Auth — `estavo-app`
 
 Go to **Authentication → Settings**:
 
@@ -107,8 +107,8 @@ Go to **Authentication → Settings**:
 - Residents will receive a login link to their email
 
 **Site URL:**
-- Site URL: `https://manage.estatehq.co.za`
-- Add to Redirect URLs: `https://manage.estatehq.co.za/**`, `exp://` (for Expo dev), `estatehq://` (for production app deep link)
+- Site URL: `https://manage.estavo.co.za`
+- Add to Redirect URLs: `https://manage.estavo.co.za/**`, `exp://` (for Expo dev), `estavo://` (for production app deep link)
 
 **Password Settings:**
 - Min length: 10
@@ -126,37 +126,37 @@ Go to **Authentication → Email Templates**. Customise each:
 
 *Magic Link template:*
 ```
-Subject: Your EstateHQ login link
+Subject: Your Estavo login link
 
 Hello,
 
-Click the link below to sign in to EstateHQ. This link expires in 1 hour.
+Click the link below to sign in to Estavo. This link expires in 1 hour.
 
 {{ .ConfirmationURL }}
 
 If you didn't request this, ignore this email.
 
-— EstateHQ
+— Estavo
 ```
 
 *Invite User template:*
 ```
-Subject: You've been added to [Estate Name] on EstateHQ
+Subject: You've been added to [Estate Name] on Estavo
 
 Hello,
 
-Your estate manager has added you to EstateHQ. Click below to set up your account.
+Your estate manager has added you to Estavo. Click below to set up your account.
 
 {{ .ConfirmationURL }}
 
 This link expires in 72 hours.
 
-— EstateHQ
+— Estavo
 ```
 
 ---
 
-### 1.4 Configure Storage — `estatehq-app`
+### 1.4 Configure Storage — `estavo-app`
 
 Go to **Storage → New Bucket** and create:
 
@@ -176,7 +176,7 @@ All buckets private — access via signed URLs generated server-side.
 
 ### 1.5 Run the Database Schema
 
-Go to **SQL Editor** in `estatehq-app` and run the following in one block:
+Go to **SQL Editor** in `estavo-app` and run the following in one block:
 
 ```sql
 -- Enable UUID extension
@@ -455,7 +455,7 @@ This is what lets the Raspberry Pi listener receive instant updates when a manag
 
 1. Go to [resend.com](https://resend.com) → Sign up
 2. Go to **Domains → Add Domain**
-3. Enter: `estatehq.co.za`
+3. Enter: `estavo.co.za`
 4. Resend will give you DNS records to add. Copy them.
 
 ### 2.2 Add DNS Records in Cloudflare
@@ -469,14 +469,14 @@ This is what lets the Raspberry Pi listener receive instant updates when a manag
 ### 2.3 Get API Key
 
 1. Resend → **API Keys → Create API Key**
-2. Name: `estatehq-production`
+2. Name: `estavo-production`
 3. Permission: **Full Access**
 4. Save the key: `re_xxxxxxxxxxxx`
 
 Add to your env:
 ```
 RESEND_API_KEY=re_xxxxxxxxxxxx
-RESEND_FROM_EMAIL=noreply@estatehq.co.za
+RESEND_FROM_EMAIL=noreply@estavo.co.za
 ```
 
 ### 2.4 Email Addresses to Configure
@@ -485,13 +485,13 @@ Set up these addresses in your domain's email routing (Cloudflare Email Routing 
 
 | Address | Purpose |
 |---|---|
-| `noreply@estatehq.co.za` | Transactional sends (Resend) |
-| `support@estatehq.co.za` | Customer support |
-| `billing@estatehq.co.za` | Billing enquiries |
+| `noreply@estavo.co.za` | Transactional sends (Resend) |
+| `support@estavo.co.za` | Customer support |
+| `billing@estavo.co.za` | Billing enquiries |
 
 **Cloudflare Email Routing** (free, no mail server needed):
 1. Cloudflare dashboard → **Email → Email Routing**
-2. Add routing rules: `support@estatehq.co.za` → forward to your personal email
+2. Add routing rules: `support@estavo.co.za` → forward to your personal email
 
 ---
 
@@ -499,15 +499,15 @@ Set up these addresses in your domain's email routing (Cloudflare Email Routing 
 
 ### 3.1 Cloudflare Pages — Manager Dashboard
 
-1. **GitHub:** Create repo `estatehq-web` in your `estatehq-dev` org
+1. **GitHub:** Create repo `estavo-web` in your `estavo-dev` org
 2. **Cloudflare:** Go to **Workers & Pages → Create → Pages → Connect to Git**
-3. Select the `estatehq-web` repo
+3. Select the `estavo-web` repo
 4. Build settings:
-   - Build command: `pnpm run build --filter=@estatehq/manager`
+   - Build command: `pnpm run build --filter=@estavo/manager`
    - Build output directory: `apps/manager/.next`
    - Root directory: `/` (Turborepo handles workspace)
 5. **Environment Variables** → add all your `.env.local` values here
-6. After deploy, go to **Custom Domains → Add Domain**: `manage.estatehq.co.za`
+6. After deploy, go to **Custom Domains → Add Domain**: `manage.estavo.co.za`
 7. Cloudflare will auto-create the DNS record and SSL cert
 
 ### 3.2 Cloudflare Workers — OTP Validation
@@ -522,8 +522,8 @@ wrangler login
 
 2. **Create worker project:**
 ```bash
-wrangler init estatehq-otp-validator
-cd estatehq-otp-validator
+wrangler init estavo-otp-validator
+cd estavo-otp-validator
 ```
 
 3. **Worker logic** (`src/index.ts`):
@@ -604,16 +604,16 @@ wrangler secret put SUPABASE_SERVICE_KEY
 wrangler deploy
 ```
 
-6. **Custom route:** In Cloudflare, add route `api.estatehq.co.za/otp/validate` → points to this worker.
+6. **Custom route:** In Cloudflare, add route `api.estavo.co.za/otp/validate` → points to this worker.
 
 ### 3.3 Subdomains to Configure in Cloudflare DNS
 
 | Subdomain | Points To | Purpose |
 |---|---|---|
-| `manage.estatehq.co.za` | Cloudflare Pages | Manager dashboard |
-| `admin.estatehq.co.za` | Cloudflare Pages | Superadmin portal |
-| `api.estatehq.co.za` | Cloudflare Workers | API routes |
-| `estatehq.co.za` | Cloudflare Pages | Marketing landing page |
+| `manage.estavo.co.za` | Cloudflare Pages | Manager dashboard |
+| `admin.estavo.co.za` | Cloudflare Pages | Superadmin portal |
+| `api.estavo.co.za` | Cloudflare Workers | API routes |
+| `estavo.co.za` | Cloudflare Pages | Marketing landing page |
 
 All added as CNAME records pointing to your Cloudflare Pages project URL, or auto-created when you add custom domains in Pages.
 
@@ -662,14 +662,14 @@ Free trial accounts can only send to verified numbers. Before onboarding any est
 ### 5.1 Initialise Monorepo
 
 ```bash
-npx create-turbo@latest estatehq --package-manager pnpm
-cd estatehq
+npx create-turbo@latest estavo --package-manager pnpm
+cd estavo
 ```
 
 ### 5.2 Repo Structure
 
 ```
-estatehq/
+estavo/
 ├── apps/
 │   ├── manager/          ← Next.js manager dashboard
 │   ├── superadmin/       ← Next.js superadmin portal
@@ -755,7 +755,7 @@ Get your project ID from Supabase → Settings → General.
 ### 6.1 EAS Account
 
 1. Go to [expo.dev](https://expo.dev) → Create account
-2. Create organisation: `estatehq`
+2. Create organisation: `estavo`
 3. Install EAS CLI:
 ```bash
 npm install -g eas-cli
@@ -807,7 +807,7 @@ Create `apps/resident/.env`:
 ```
 EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-EXPO_PUBLIC_OTP_VALIDATOR_URL=https://api.estatehq.co.za/otp/validate
+EXPO_PUBLIC_OTP_VALIDATOR_URL=https://api.estavo.co.za/otp/validate
 ```
 
 All `EXPO_PUBLIC_` prefixed vars are safe to bundle in the client.
@@ -819,8 +819,8 @@ All `EXPO_PUBLIC_` prefixed vars are safe to bundle in the client.
 ### 7.1 Create Repos
 
 Go to github.com → New repository:
-- `estatehq-dev/estatehq` — main monorepo (private)
-- `estatehq-dev/estatehq-hardware` — Raspberry Pi code (private)
+- `estavo-dev/estavo` — main monorepo (private)
+- `estavo-dev/estavo-hardware` — Raspberry Pi code (private)
 
 ### 7.2 Branch Strategy
 
@@ -866,7 +866,7 @@ node_modules/
 
 1. Download [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
 2. Flash **Raspberry Pi OS Lite (64-bit)** to SD card
-3. Before ejecting: in Imager settings, enable SSH, set hostname `estatehq-gate`, set a strong password, configure Wi-Fi (the estate's network)
+3. Before ejecting: in Imager settings, enable SSH, set hostname `estavo-gate`, set a strong password, configure Wi-Fi (the estate's network)
 
 ### 8.3 Pi Listener Script
 
@@ -937,7 +937,7 @@ sudo nano /etc/systemd/system/gate-listener.service
 
 ```ini
 [Unit]
-Description=EstateHQ Gate Listener
+Description=Estavo Gate Listener
 After=network.target
 
 [Service]
@@ -977,7 +977,7 @@ SUPABASE_PLATFORM_SERVICE_ROLE_KEY=
 
 # ── Resend ──────────────────────────────────────────────
 RESEND_API_KEY=
-RESEND_FROM_EMAIL=noreply@estatehq.co.za
+RESEND_FROM_EMAIL=noreply@estavo.co.za
 
 # ── Twilio ──────────────────────────────────────────────
 TWILIO_ACCOUNT_SID=
@@ -985,8 +985,8 @@ TWILIO_AUTH_TOKEN=
 TWILIO_FROM_NUMBER=
 
 # ── App Config ──────────────────────────────────────────
-NEXT_PUBLIC_APP_URL=https://manage.estatehq.co.za
-NEXT_PUBLIC_OTP_VALIDATOR_URL=https://api.estatehq.co.za/otp/validate
+NEXT_PUBLIC_APP_URL=https://manage.estavo.co.za
+NEXT_PUBLIC_OTP_VALIDATOR_URL=https://api.estavo.co.za/otp/validate
 NODE_ENV=production
 ```
 
@@ -996,8 +996,8 @@ NODE_ENV=production
 
 ```
 □ Domains registered and DNS moved to Cloudflare
-□ Supabase: estatehq-app project created
-□ Supabase: estatehq-platform project created
+□ Supabase: estavo-app project created
+□ Supabase: estavo-platform project created
 □ Supabase: Auth configured (magic link, TOTP enabled, email templates)
 □ Supabase: Storage buckets created
 □ Supabase: Database schema + RLS run successfully

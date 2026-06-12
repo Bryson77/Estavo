@@ -1,4 +1,4 @@
-# EstateHQ — Trustee Portal & Corporate Dashboard Flows
+# Estavo — Trustee Portal & Corporate Dashboard Flows
 **Surfaces:** Next.js Web
 **Version:** 1.0 | Source: Governance PRD v1.0 | June 2026
 
@@ -6,7 +6,7 @@
 
 ## TRUSTEE PORTAL
 
-**URL:** `app.estatehq.co.za/trustees`
+**URL:** `app.estavo.co.za/trustees`
 **Access:** `role = 'trustee'` only — middleware enforced
 
 **Design principle:** Trustees are not ops people. This is a decision inbox, not an operations dashboard. Mobile-first — most trustees check on their phone.
@@ -223,7 +223,7 @@ SIGN OUT
 
 ## CORPORATE DASHBOARD
 
-**URL:** `corporate.estatehq.co.za`
+**URL:** `corporate.estavo.co.za`
 **Access:** `role = 'corporate_agent'` only
 **Design principle:** Portfolio health at a glance. Every screen answers "is something wrong and where?"
 
@@ -239,7 +239,7 @@ Corporate agent receives invite email
 Set password → role = 'corporate_agent' + assigned estates
     │
     ▼
-Login → corporate.estatehq.co.za/portfolio (default)
+Login → corporate.estavo.co.za/portfolio (default)
 ```
 
 Assigned estates set by superadmin via `corporate_agent_estates` table. Agent sees only their assigned estates.

@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-// We use the estatehq-app database for reading/writing estate data
+// We use the estavo-app database for reading/writing estate data
 // This requires the Service Role Key because ops sits outside of the app's RLS
 const appUrl = process.env.SUPABASE_APP_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const appServiceRoleKey = process.env.SUPABASE_APP_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;

@@ -1,24 +1,24 @@
-# EstateHQ — Brand Identity
+# Estavo — Brand Identity
 **Version:** 1.0 | **June 2026**
 
 ---
 
 ## 1. Brand Positioning
 
-### What EstateHQ Is
+### What Estavo Is
 A professional estate operations platform built specifically for South African residential communities. Not a startup toy — a serious operational tool that estate managers can trust and residents can rely on daily.
 
 ### Brand Personality
 
 | Trait | What It Means in Practice |
 |---|---|
-| **Authoritative** | Confident, not arrogant. EstateHQ knows its domain. |
+| **Authoritative** | Confident, not arrogant. Estavo knows its domain. |
 | **Precise** | No clutter. Every word and pixel earns its place. |
 | **Grounded** | Built for real SA estate life — not imported SaaS aesthetic. |
 | **Trustworthy** | Security + compliance front and centre. Not flashy. |
 | **Efficient** | The brand never wastes your time. |
 
-### What EstateHQ Is NOT
+### What Estavo Is NOT
 - Not a consumer app (no rounded bubbly UI, no emoji in UI copy)
 - Not a generic SaaS product (not another blue gradient B2B tool)
 - Not a government portal (not sterile or cold)
@@ -28,22 +28,22 @@ A professional estate operations platform built specifically for South African r
 
 ## 2. Naming
 
-**Product Name:** EstateHQ
+**Product Name:** Estavo
 
 **Tagline:** *One Platform. Everything Your Estate Runs On.*
 
 **Why this tagline works:**
 - "One Platform" — directly addresses the fragmentation problem
-- "Everything Your Estate Runs On" — positions EstateHQ as infrastructure, not a nice-to-have
+- "Everything Your Estate Runs On" — positions Estavo as infrastructure, not a nice-to-have
 - Short, printable, works in sales decks and on a homepage
 
-**Domain:** estatehq.co.za *(reserve this if not already owned)*
+**Domain:** estavo.co.za *(reserve this if not already owned)*
 
 **Sub-brand naming convention:**
-- EstateHQ Resident — the resident app
-- EstateHQ Security — the security/staff app
-- EstateHQ Manage — the manager dashboard
-- EstateHQ Admin — superadmin portal (internal, not marketed)
+- Estavo Resident — the resident app
+- Estavo Security — the security/staff app
+- Estavo Manage — the manager dashboard
+- Estavo Admin — superadmin portal (internal, not marketed)
 
 ---
 
@@ -74,7 +74,7 @@ A professional estate operations platform built specifically for South African r
 |---|---|---|
 | **Obsidian** | `#0F1117` | Primary background (dark UI), headers |
 | **Slate White** | `#F2F3F5` | Primary background (light UI), body text on dark |
-| **EstateHQ Green** | `#1A7A4A` | Primary brand accent — CTAs, active states, success indicators |
+| **Estavo Green** | `#1A7A4A` | Primary brand accent — CTAs, active states, success indicators |
 | **Warm Graphite** | `#2C2F36` | Cards, elevated surfaces on dark UI |
 | **Mist** | `#8B929E` | Secondary text, labels, disabled states |
 | **Alert Red** | `#D93025` | Errors, emergency alerts, overdue levy indicators |
@@ -95,7 +95,7 @@ Most B2B SaaS uses blue (Salesforce, Jira, Linear). In the SA context, green car
 **Display / Headings:** [Inter](https://rsms.me/inter/) Bold / Extra Bold
 - Available on Google Fonts, works in React Native and Next.js
 - Geometric, precise, excellent legibility at all sizes
-- Not a serif — EstateHQ is operational software, not editorial
+- Not a serif — Estavo is operational software, not editorial
 
 **Body:** Inter Regular / Medium
 - Single family across all surfaces for system coherence
@@ -155,7 +155,7 @@ Most B2B SaaS uses blue (Salesforce, Jira, Linear). In the SA context, green car
 ## 4. Voice & Tone
 
 ### Core Principle
-EstateHQ communicates like a competent professional — clear, direct, never condescending, never casual to the point of seeming unreliable.
+Estavo communicates like a competent professional — clear, direct, never condescending, never casual to the point of seeming unreliable.
 
 ### UI Copy Rules
 
@@ -216,12 +216,12 @@ In the manager dashboard and security app, tables and data views take priority. 
 
 ### Resident App Icon
 - White/light `#F2F3F5` background
-- EstateHQ green `#1A7A4A` HQ monogram, centred
+- Estavo green `#1A7A4A` HQ monogram, centred
 - Clean, professional — stands out on a home screen among social apps
 
 ### Security App Icon
 - Dark `#0F1117` background
-- EstateHQ green `#1A7A4A` shield outline with HQ inside
+- Estavo green `#1A7A4A` shield outline with HQ inside
 - Immediately signals security context
 
 ---
@@ -231,7 +231,7 @@ In the manager dashboard and security app, tables and data views take priority. 
 ### Hero Section
 - Dark background (`#0F1117`)
 - Tagline: **"One Platform. Everything Your Estate Runs On."**
-- Sub-copy: "Stop managing your estate across twelve WhatsApp groups. EstateHQ gives residents, security staff, and managers one place to do everything."
+- Sub-copy: "Stop managing your estate across twelve WhatsApp groups. Estavo gives residents, security staff, and managers one place to do everything."
 - CTA: "Book a Demo" (primary) / "See How It Works" (secondary)
 
 ### Social Proof Section (Phase 2, post-launch)

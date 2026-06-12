@@ -1,4 +1,4 @@
-# EstateHQ — Management Web Dashboard Flows
+# Estavo — Management Web Dashboard Flows
 **Surface:** Next.js Web — desktop primary, tablet supported
 **Version:** 2.0 | Updated: June 2026
 **Auth:** Magic link OR email + password · No 2FA during testing phase
@@ -33,7 +33,7 @@ Estate managers also get access to the **resident app as Unit 00** (or configura
 ### Login
 
 ```
-Navigate to app.estatehq.co.za/dashboard
+Navigate to app.estavo.co.za/dashboard
     │
     ▼
 Email + password   OR   Magic link
@@ -42,7 +42,7 @@ Email + password   OR   Magic link
 Role check: estate_manager or trustee or corporate_agent
     ├── estate_manager → /dashboard (this document)
     ├── trustee → /trustees (Trustee Portal)
-    └── corporate_agent → corporate.estatehq.co.za
+    └── corporate_agent → corporate.estavo.co.za
 ```
 
 No 2FA during testing phase. Will be added pre-production.
@@ -53,7 +53,7 @@ No 2FA during testing phase. Will be added pre-production.
 Superadmin creates estate → manager invited via email
     │
     ▼
-Manager clicks invite link → browser opens app.estatehq.co.za
+Manager clicks invite link → browser opens app.estavo.co.za
     │
     ▼
 Set password (first time)

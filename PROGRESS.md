@@ -1,4 +1,4 @@
-# EstateHQ — Build Progress
+# Estavo — Build Progress
 
 **Version:** 1.0 | **Last Updated:** June 2026 | **PRD Version:** 1.0
 
@@ -6,7 +6,7 @@
 
 ## Platform Overview
 
-EstateHQ is a B2B SaaS platform for South African residential estates — access control, levy management, maintenance, and communication in one place.
+Estavo is a B2B SaaS platform for South African residential estates — access control, levy management, maintenance, and communication in one place.
 
 ### Four Surfaces (per PRD)
 
@@ -278,7 +278,7 @@ Per PRD §12.2 — schemas already documented in PRD:
 
 ## Testing — Mock Estate
 
-Mock data lives in the live `estatehq-app` Supabase project. Multiple emails with different roles are seeded on a mock estate.
+Mock data lives in the live `estavo-app` Supabase project. Multiple emails with different roles are seeded on a mock estate.
 
 Auth flow:
 1. Enter email on the login screen → "Send code"

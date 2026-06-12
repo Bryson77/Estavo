@@ -1,4 +1,4 @@
-# EstateHQ — Governance Expansion PRD
+# Estavo — Governance Expansion PRD
 ## Full-Stack (Frontend + Backend)
 **Version:** 1.0 | **Status:** Pre-build | **Date:** June 2026
 **Scope:** Management Dashboard additions + Trustee Portal + Corporate Dashboard
@@ -7,7 +7,7 @@
 
 ## 1. OVERVIEW
 
-This PRD covers all new features added to EstateHQ as part of the Estate OS governance expansion. It extends the existing Management Dashboard and introduces two new portals:
+This PRD covers all new features added to Estavo as part of the Estate OS governance expansion. It extends the existing Management Dashboard and introduces two new portals:
 
 - **Management Dashboard additions** — Contractors screen, Approval Requests outbox, Pending Approvals widget
 - **Trustee Portal** — Decision inbox, Estate overview, Meetings, Document vault
@@ -22,9 +22,9 @@ All three interfaces share the same Supabase backend, design system, and authent
 ### URL Structure
 
 ```
-app.estatehq.co.za/dashboard       → Estate Manager (existing)
-app.estatehq.co.za/trustees        → Trustee Portal (new)
-corporate.estatehq.co.za           → Corporate Dashboard (new)
+app.estavo.co.za/dashboard       → Estate Manager (existing)
+app.estavo.co.za/trustees        → Trustee Portal (new)
+corporate.estavo.co.za           → Corporate Dashboard (new)
 ```
 
 ### Role Access Map
@@ -434,7 +434,7 @@ Unassigned ticket warning:
 
 ## 7. TRUSTEE PORTAL
 
-**URL:** `app.estatehq.co.za/trustees`
+**URL:** `app.estavo.co.za/trustees`
 **Access:** `role = 'trustee'` only
 
 **Design principle:** Trustees are not ops people. The entire interface is a decision inbox. No gate logs, no staff data, no maintenance tables. Mobile-first — most trustees check this on their phone.
@@ -634,7 +634,7 @@ Trustees can download but not upload. Upload is manager/corporate only.
 
 ## 8. CORPORATE DASHBOARD
 
-**URL:** `corporate.estatehq.co.za`
+**URL:** `corporate.estavo.co.za`
 **Access:** `role = 'corporate_agent'` only
 
 **Design principle:** Portfolio health at a glance. Every screen answers "is something wrong and where?"
@@ -812,7 +812,7 @@ Manager detail slide-over:
 2. Corporate agent receives invite email
 3. Sets password → profile created with `role = 'corporate_agent'`
 4. Bryson assigns estates via `corporate_agent_estates` table
-5. Login → redirected to `corporate.estatehq.co.za/portfolio`
+5. Login → redirected to `corporate.estavo.co.za/portfolio`
 6. Sees only estates assigned to them — no cross-portfolio data leakage
 
 ---

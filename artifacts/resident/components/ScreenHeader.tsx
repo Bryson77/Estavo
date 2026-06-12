@@ -14,7 +14,7 @@ interface ScreenHeaderProps {
   initials?: string;
   /** Show a back arrow instead of the avatar */
   showBack?: boolean;
-  /** Small label above the title when showBack is true (e.g. "ESTATEHQ") */
+  /** Small label above the title when showBack is true (e.g. "ESTAVO") */
   backLabel?: string;
   /** Override header background (default: #1565C0) */
   headerBg?: string;

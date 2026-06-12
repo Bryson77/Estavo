@@ -1,20 +1,20 @@
-# EstateHQ — UI PRD (Visual System & Wording)
+# Estavo — UI PRD (Visual System & Wording)
 **Document:** UI Design System — Colours, Typography, Iconography, Voice
 **Version:** 1.0 · 11 June 2026
-**Sources:** `01_EstateHQ_PRD.md`, `02_EstateHQ_Brand_Identity.md`, `EstateHQ_Prototypes_PRD.md`, live prototypes at bryson77.github.io/estateHQ
+**Sources:** `01_Estavo_PRD.md`, `02_Estavo_Brand_Identity.md`, `Estavo_Prototypes_PRD.md`, live prototypes at bryson77.github.io/estateHQ
 
 ---
 
 ## 0. Colour Decision (Override)
 
-`02_EstateHQ_Brand_Identity.md` (v1.0) specified **EstateHQ Green `#1A7A4A`** as the primary brand accent. This is **overridden**:
+`02_Estavo_Brand_Identity.md` (v1.0) specified **Estavo Green `#1A7A4A`** as the primary brand accent. This is **overridden**:
 
 - **Theming (brand accents, headers, CTAs, logo, primary buttons, active states):** No green. Use **Blue** (`#1E40AF` / `#005B9F`, Resident) and **Red** (`#C0392B` / `#DC2626`, Security/Maintenance/Manager), per the shipped prototypes.
 - **Status/activity indicators (badges, chips, log entries) where green is the semantic meaning** — e.g. "Active", "Resolved", "Paid", "Online" — green remains valid, since it's communicating state, not branding.
 
-This matches `EstateHQ_Prototypes_PRD.md`'s existing rule: *"There is no green status dot anywhere — online indicators reuse the role accent."* Online/active indicators use the role accent (blue/red), not green dots — green is reserved for status badges like "Resolved" or "Paid" where it's the conventional meaning.
+This matches `Estavo_Prototypes_PRD.md`'s existing rule: *"There is no green status dot anywhere — online indicators reuse the role accent."* Online/active indicators use the role accent (blue/red), not green dots — green is reserved for status badges like "Resolved" or "Paid" where it's the conventional meaning.
 
-`02_EstateHQ_Brand_Identity.md` should be version-bumped to v1.1 to record this change.
+`02_Estavo_Brand_Identity.md` should be version-bumped to v1.1 to record this change.
 
 ---
 
@@ -56,7 +56,7 @@ Badge colours, status-driven:
 - Blue → informational
 - Muted grey → inactive / closed
 
-**Note:** `--forest-dark` and `--sage` are muted green-greys used as structural/secondary tones in the dashboard only (charts, avatar tints) — these read as neutral earth tones, not as a "green brand accent," and are visually distinct from the rejected EstateHQ Green (`#1A7A4A`). If a fully green-free palette is required even here, `--forest-dark`/`--sage` would need replacing — flag if so.
+**Note:** `--forest-dark` and `--sage` are muted green-greys used as structural/secondary tones in the dashboard only (charts, avatar tints) — these read as neutral earth tones, not as a "green brand accent," and are visually distinct from the rejected Estavo Green (`#1A7A4A`). If a fully green-free palette is required even here, `--forest-dark`/`--sage` would need replacing — flag if so.
 
 ### 1.3 Reference values from screenshot (extracted earlier)
 
@@ -97,7 +97,7 @@ Badge colours, status-driven:
 - **Mobile shell:** iPhone-style frame, `rounded-[2.5rem]`, 10px bezel, 14px chin; inner canvas ~400×720px, `rounded-[1.9rem]`, accent-tinted background.
 - **Header band (mobile):** 56px, gradient `--app-header-from → --app-header-to`, white text.
   - Tab routes: avatar (initials) + role label + screen title + settings cog
-  - Sub-routes: back chevron + "EstateHQ" + screen title + settings cog
+  - Sub-routes: back chevron + "Estavo" + screen title + settings cog
 - **Bottom tab bar:** 4 tabs + iOS home indicator; hidden on full-screen sub-routes (Gate, Emergency, Task Detail, New Guest Code).
 - **Shadows:** Subtle, desaturated — `box-shadow: 0 1px 3px rgba(0,0,0,0.12)` on light surfaces. On dark UI, use border + background-lift instead of shadow.
 - **Density:** Functional, not cramped or airy — dashboard is a work tool.
@@ -123,7 +123,7 @@ Badge colours, status-driven:
 | `clock` | Pending / scheduled |
 | `check-circle` | Success / resolved |
 
-**Branding note:** No house/home icon, no shield-as-logo, no gate/barrier graphic in the logo itself (per brand doc) — these icons are fine for in-app status, just not as the EstateHQ mark.
+**Branding note:** No house/home icon, no shield-as-logo, no gate/barrier graphic in the logo itself (per brand doc) — these icons are fine for in-app status, just not as the Estavo mark.
 
 ---
 
@@ -185,7 +185,7 @@ Example: "No maintenance requests yet. Residents can log issues directly from th
 
 Pulled from bryson77.github.io/estateHQ/ — useful as the canonical source of marketing wording, restated here in summary form (full copy lives on the site, not duplicated verbatim):
 
-- **Tagline / hero theme:** Estates currently run on WhatsApp groups and spreadsheets; EstateHQ replaces this patchwork with one platform covering gate control, guest access, maintenance reporting, and community tools.
+- **Tagline / hero theme:** Estates currently run on WhatsApp groups and spreadsheets; Estavo replaces this patchwork with one platform covering gate control, guest access, maintenance reporting, and community tools.
 - **Pricing stance:** No hidden costs, no per-resident charges, cancel anytime; one flat monthly price agreed upfront.
 - **Six feature pillars** (numbered 01–06 on the site):
   1. Gate Control — hold-to-open, full gate log, 5-second undo
@@ -202,6 +202,6 @@ Pulled from bryson77.github.io/estateHQ/ — useful as the canonical source of m
 
 ## 8. Open Items
 
-1. ~~Resolve green vs blue/red conflict~~ — **Resolved**, see Section 0. `02_EstateHQ_Brand_Identity.md` should be bumped to v1.1.
+1. ~~Resolve green vs blue/red conflict~~ — **Resolved**, see Section 0. `02_Estavo_Brand_Identity.md` should be bumped to v1.1.
 2. Confirm whether `--forest-dark` / `--sage` (dashboard secondary tones, muted green-greys) are acceptable as structural/chart colours, or need replacing under the theming override.
-3. Logomark: brand doc's "HQ" monogram was tied to EstateHQ Green — confirm new colour (blue or red, or a neutral) for the logomark/app icons now that green is excluded from theming.
+3. Logomark: brand doc's "HQ" monogram was tied to Estavo Green — confirm new colour (blue or red, or a neutral) for the logomark/app icons now that green is excluded from theming.

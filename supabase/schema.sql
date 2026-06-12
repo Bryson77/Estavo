@@ -1,5 +1,5 @@
--- EstateHQ App Database Schema
--- Run this in your Supabase SQL editor (estatehq-app project)
+-- Estavo App Database Schema
+-- Run this in your Supabase SQL editor (estavo-app project)
 -- ============================================================
 
 -- Enable UUID extension

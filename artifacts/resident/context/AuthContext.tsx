@@ -3,8 +3,8 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { Alert } from "react-native";
 import { setOnAuthError } from "../lib/api";
 
-const TOKEN_KEY = "@estatehq_token";
-const USER_KEY = "@estatehq_user";
+const TOKEN_KEY = "@estavo_token";
+const USER_KEY = "@estavo_user";
 
 export interface AuthUser {
   id: string;

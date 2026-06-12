@@ -10,7 +10,7 @@ We're standardizing this project's data layer on Supabase only. Read this fully 
 
 The current `artifacts/api-server` backend uses Drizzle ORM (`lib/db`) with a direct Postgres connection (`DATABASE_URL`) and a custom schema (`users`, `guest_codes`, `gate_logs`, etc.) with custom auth fields (`passwordHash`, `otpCode`). This schema does NOT exist in any live database — no migrations have been run.
 
-We are NOT using this Drizzle schema. Instead, we already have a fully set-up Supabase project (`estatehq-app`) with tables, RLS policies, and Storage already configured and live with test data. Environment variables for Supabase (anon key, service role key, platform keys) are already added to this Repl's secrets.
+We are NOT using this Drizzle schema. Instead, we already have a fully set-up Supabase project (`estavo-app`) with tables, RLS policies, and Storage already configured and live with test data. Environment variables for Supabase (anon key, service role key, platform keys) are already added to this Repl's secrets.
 
 ## What to do
 
@@ -31,7 +31,7 @@ Use `supabaseApp` (service role) ONLY for: Superadmin "onboard new estate" flow,
 
 ### 3. Tables to use — DO NOT create new tables, DO NOT rename columns
 
-These tables already exist in `estatehq-app` with RLS policies live:
+These tables already exist in `estavo-app` with RLS policies live:
 
 ```
 estates           - id, name, address, unit_count, subscription_tier, is_active,

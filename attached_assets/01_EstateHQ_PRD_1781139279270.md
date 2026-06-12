@@ -1,11 +1,11 @@
-# EstateHQ — Product Requirements Document
+# Estavo — Product Requirements Document
 **Version:** 1.0 | **Author:** Bryson Mabilo | **Date:** June 2026
 
 ---
 
 ## 1. Executive Summary
 
-EstateHQ is a B2B SaaS platform for South African residential estates. It replaces fragmented WhatsApp groups, paper visitor logs, spreadsheet maintenance schedules, and manual levy tracking with a single, integrated operations system.
+Estavo is a B2B SaaS platform for South African residential estates. It replaces fragmented WhatsApp groups, paper visitor logs, spreadsheet maintenance schedules, and manual levy tracking with a single, integrated operations system.
 
 **Target Market:** Gated communities, security estates, townhouse complexes, and lifestyle estates in South Africa — primarily 50–500 units.
 
@@ -40,11 +40,11 @@ EstateHQ is a B2B SaaS platform for South African residential estates. It replac
 
 ## 3. Product Overview
 
-EstateHQ is a **four-surface platform** — two mobile apps and two web portals — each designed for a specific role.
+Estavo is a **four-surface platform** — two mobile apps and two web portals — each designed for a specific role.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     EstateHQ Platform                   │
+│                     Estavo Platform                   │
 ├────────────────┬────────────────┬───────────────────────┤
 │  Resident App  │  Security App  │   Manager Dashboard   │
 │  (React Native)│  (React Native)│   (Next.js Web)       │
@@ -80,7 +80,7 @@ EstateHQ is a **four-surface platform** — two mobile apps and two web portals 
 - Auth: Email + password + TOTP 2FA (mandatory)
 - No operational controls — approvals only
 
-### 4.5 Superadmin (EstateHQ Internal)
+### 4.5 Superadmin (Estavo Internal)
 - Bryson + team
 - Auth: Email + password + TOTP 2FA (mandatory)
 - Platform-wide: estate provisioning, billing, support access
@@ -265,8 +265,8 @@ EstateHQ is a **four-surface platform** — two mobile apps and two web portals 
 ### 6.2 Multi-Tenancy Strategy
 
 **Two Supabase projects:**
-- `estatehq-app` — All estate operational data (residents, levies, maintenance, gate logs). Each estate is isolated via Row Level Security (RLS) policies using `estate_id`.
-- `estatehq-platform` — Billing, subscription management, estate provisioning records, superadmin accounts.
+- `estavo-app` — All estate operational data (residents, levies, maintenance, gate logs). Each estate is isolated via Row Level Security (RLS) policies using `estate_id`.
+- `estavo-platform` — Billing, subscription management, estate provisioning records, superadmin accounts.
 
 This separation prevents a billing bug from touching operational data and makes future white-labelling cleaner.
 
@@ -427,9 +427,9 @@ This section covers all features added as part of the Estate OS governance layer
 
 **URL Structure:**
 ```
-app.estatehq.co.za/dashboard       → Estate Manager (existing)
-app.estatehq.co.za/trustees        → Trustee Portal (new)
-corporate.estatehq.co.za           → Corporate Dashboard (new)
+app.estavo.co.za/dashboard       → Estate Manager (existing)
+app.estavo.co.za/trustees        → Trustee Portal (new)
+corporate.estavo.co.za           → Corporate Dashboard (new)
 ```
 
 **Role Access Map:**
@@ -696,7 +696,7 @@ New sub-section in existing Settings screen:
 
 ### 12.6 Trustee Portal
 
-**URL:** `app.estatehq.co.za/trustees`
+**URL:** `app.estavo.co.za/trustees`
 **Access:** `role = 'trustee'` only
 **Design principle:** Decision inbox. Trustees are not ops people — no gate logs, no staff data, no maintenance tables. Mobile-first.
 
@@ -753,7 +753,7 @@ Header note: "All documents are encrypted and access-logged."
 
 ### 12.7 Corporate Dashboard
 
-**URL:** `corporate.estatehq.co.za`
+**URL:** `corporate.estavo.co.za`
 **Access:** `role = 'corporate_agent'` only
 **Design principle:** Portfolio health at a glance. Every screen answers "is something wrong and where?"
 
@@ -865,4 +865,4 @@ These must be answered via estate manager + trustee interviews before building P
 
 ---
 
-*This is the locked PRD for EstateHQ v1 + Governance Expansion. Changes require explicit decision and version increment.*
+*This is the locked PRD for Estavo v1 + Governance Expansion. Changes require explicit decision and version increment.*

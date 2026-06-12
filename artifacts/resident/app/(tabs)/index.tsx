@@ -199,7 +199,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <ScreenHeader
-        title={user?.estateName ?? "EstateHQ"}
+        title={user?.estateName ?? "Estavo"}
         subtitle={subLabel}
         showAvatar
         initials={initials}
@@ -275,7 +275,7 @@ export default function HomeScreen() {
             <Ionicons name="mail-outline" size={20} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.updatesLabel, { color: colors.mutedForeground }]}>MANAGEMENT UPDATES</Text>
+            <Text style={[styles.updatesLabel, { color: colors.mutedForeground }]}>MANAGEMENT ANNOUNCEMENTS</Text>
             <Text style={[styles.updatesBody, { color: colors.foreground }]}>
               {unreadBroadcasts > 0 ? `${unreadBroadcasts} unread notice${unreadBroadcasts > 1 ? "s" : ""}` : "All caught up"}
             </Text>
