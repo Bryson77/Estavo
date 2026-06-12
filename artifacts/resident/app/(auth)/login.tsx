@@ -25,7 +25,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const { login: authLogin } = useAuth();
   
-  const [step, setStep] = useState<"email" | "otp">("email");
+  const [step, setStep] = useState<"email" | "password" | "otp">("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
@@ -79,8 +79,8 @@ export default function LoginScreen() {
   const handleVerifyOtp = async () => {
     const trimmed = email.trim().toLowerCase();
     const code = otp.trim();
-    if (code.length !== 6) {
-      Alert.alert("Invalid code", "Please enter the 6-digit code.");
+    if (!code) {
+      Alert.alert("Invalid code", "Please enter the code from your email.");
       return;
     }
     setLoading(true);
@@ -137,14 +137,14 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.body}>
-        {step === "email" ? (
+        {step === "email" && (
           <>
             <Text style={[styles.title, { color: colors.foreground }]}>Welcome back</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
               Enter your email to get started
             </Text>
 
-            <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card }]}>
+            <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card, marginBottom: 24 }]}>
               <Ionicons name="mail-outline" size={18} color={colors.mutedForeground} />
               <TextInput
                 style={[styles.input, { color: colors.foreground }]}
@@ -157,20 +157,6 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 autoComplete="email"
                 returnKeyType="next"
-              />
-            </View>
-            
-            <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card, marginBottom: 24 }]}>
-              <Ionicons name="lock-closed-outline" size={18} color={colors.mutedForeground} />
-              <TextInput
-                style={[styles.input, { color: colors.foreground }]}
-                placeholder="Password (optional for magic link)"
-                placeholderTextColor={colors.mutedForeground}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-                returnKeyType="done"
               />
             </View>
 
@@ -200,13 +186,67 @@ export default function LoginScreen() {
                 styles.secondaryBtn,
                 { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed || loading || magicLoading ? 0.85 : 1 },
               ]}
-              onPress={handleLogin}
+              onPress={() => setStep("password")}
               disabled={loading || magicLoading}
             >
+              <Text style={[styles.secondaryBtnText, { color: colors.foreground }]}>Login with password</Text>
+            </Pressable>
+            
+            <Text style={[styles.footer, { color: colors.mutedForeground }]}>
+              Don't have an account? Contact your estate manager to get added.
+            </Text>
+          </>
+        )}
+
+        {step === "password" && (
+          <>
+            <Text style={[styles.title, { color: colors.foreground }]}>Login with Password</Text>
+            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+              Enter your password to sign in
+            </Text>
+
+            <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <Ionicons name="mail-outline" size={18} color={colors.mutedForeground} />
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.mutedForeground}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                returnKeyType="next"
+              />
+            </View>
+            
+            <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card, marginBottom: 24 }]}>
+              <Ionicons name="lock-closed-outline" size={18} color={colors.mutedForeground} />
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                placeholder="Password"
+                placeholderTextColor={colors.mutedForeground}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                returnKeyType="done"
+              />
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.btn,
+                { backgroundColor: colors.primary, opacity: pressed || loading ? 0.85 : 1 },
+              ]}
+              onPress={handleLogin}
+              disabled={loading}
+            >
               {loading ? (
-                <ActivityIndicator color={colors.foreground} />
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={[styles.secondaryBtnText, { color: colors.foreground }]}>Login with password</Text>
+                <Text style={styles.btnText}>Login</Text>
               )}
             </Pressable>
 
@@ -219,27 +259,35 @@ export default function LoginScreen() {
               </Text>
             </Pressable>
 
-            <Text style={[styles.footer, { color: colors.mutedForeground }]}>
-              Don't have an account? Contact your estate manager to get added.
-            </Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.secondaryBtn,
+                { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed || loading ? 0.85 : 1 },
+              ]}
+              onPress={() => setStep("email")}
+              disabled={loading}
+            >
+              <Text style={[styles.secondaryBtnText, { color: colors.foreground }]}>Back to Magic Link</Text>
+            </Pressable>
           </>
-        ) : (
+        )}
+
+        {step === "otp" && (
           <>
             <Text style={[styles.title, { color: colors.foreground }]}>Check your email</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              We sent a 6-digit code to {email}. You can also just click the magic link in the email.
+              We sent a code to {email}. You can also just click the magic link in the email.
             </Text>
 
             <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.card, marginBottom: 24 }]}>
               <Ionicons name="keypad-outline" size={18} color={colors.mutedForeground} />
               <TextInput
                 style={[styles.input, { color: colors.foreground }]}
-                placeholder="000000"
+                placeholder="Paste your code here"
                 placeholderTextColor={colors.mutedForeground}
                 value={otp}
                 onChangeText={setOtp}
-                keyboardType="number-pad"
-                maxLength={6}
+                keyboardType="default"
                 autoFocus
               />
             </View>

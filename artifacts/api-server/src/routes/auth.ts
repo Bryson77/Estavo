@@ -12,8 +12,8 @@ const requestOtpSchema = z.object({
 
 const verifyOtpSchema = z.object({
   email: z.string().email(),
-  otp: z.string().length(6).optional(),
-  token: z.string().length(6).optional(),
+  otp: z.string().optional(),
+  token: z.string().optional(),
 }).refine(d => d.otp ?? d.token, { message: "otp or token required" });
 
 const loginSchema = z.object({
