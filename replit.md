@@ -1,44 +1,55 @@
-# [Project name]
+# Estavo
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Estate management SaaS platform with four portals: Superadmin provisioning, Management Dashboard, Trustee Portal, and Corporate Dashboard.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/superadmin run dev` — Superadmin portal (port 19460)
+- `pnpm --filter @workspace/estavo-app run dev` — All three estate portals (port 19461)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Frontend: Next.js 15 (App Router) for both portals
+- Styling: Tailwind CSS 4 (inline config)
+- DB/Auth: Supabase (client in `artifacts/estavo-app/lib/supabase.ts`)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/superadmin/` — Superadmin provisioning portal at `/superadmin/`
+- `artifacts/estavo-app/` — Three-portal app at `/app/`
+  - `app/(management)/` — Estate Manager routes: /dashboard, /residents, /gates, /maintenance, etc.
+  - `app/(trustees)/` — Trustee routes: /trustees, /trustees/meetings, /trustees/documents, etc.
+  - `app/(corporate)/` — Corporate Agent routes: /corporate, /corporate/analytics, /corporate/financials, etc.
+  - `lib/mock-data.ts` — All mock data (swap for Supabase queries once env vars are set)
+  - `components/ui.tsx` — Shared UI components (StatCard, Badge, PageHeader, PillFilter, etc.)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Both portals are Next.js 15 App Router apps (not Vite) — chosen for RSC and SSR capabilities, which suit data-heavy dashboards.
+- Three portals share one Next.js app under `/app/` using route groups `(management)`, `(trustees)`, `(corporate)` — each group has its own sidebar layout.
+- All data is currently mocked in `lib/mock-data.ts`; Supabase client is ready to swap in.
+- Design system: white bg (#FFFFFF), surface (#FAFAFB), accent #3D6BF5 electric blue.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Superadmin portal** (`/superadmin/`) — provision new estates, onboard customers with a 6-step wizard
+- **Management Dashboard** (`/app/dashboard`) — estate managers see stats, gate log, maintenance, announcements
+- **Trustee Portal** (`/app/trustees`) — trustees vote on estate approvals, review meeting resolutions, manage documents
+- **Corporate Dashboard** (`/app/corporate`) — corporate agents view portfolio health, analytics, financials, compliance
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- App branding: ESTAVO (not EstateHQ)
+- Light theme throughout; no dark mode currently
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- `.next/` directories are gitignored — do not commit build output
+- artifact.toml cannot be written directly via the write tool; use bash cp + verifyAndReplaceArtifactToml
+- Supabase env vars needed: `NEXT_PUBLIC_SUPABASE_PLATFORM_URL`, `NEXT_PUBLIC_SUPABASE_PLATFORM_ANON_KEY`, `SUPABASE_APP_URL`, `SUPABASE_APP_SERVICE_ROLE_KEY`
 
 ## Pointers
 
