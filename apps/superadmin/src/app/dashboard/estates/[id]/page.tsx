@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Gauge, Users, ClipboardList, DoorOpen, TestTube2, Download, UserPlus, MessageSquare, WalletCards, CircleDollarSign, Check, Receipt } from "lucide-react";
+import { ChevronLeft, ChevronRight, Gauge, Users, ClipboardList, DoorOpen, TestTube2, Download, UserPlus, MessageSquare, WalletCards, CircleDollarSign, Check, Receipt, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { estates } from "@/lib/mock-data";
 import { PageHeader, Badge, StatCard, Panel, SimpleTable, RowActions, statusTone } from "@/components/shared";
