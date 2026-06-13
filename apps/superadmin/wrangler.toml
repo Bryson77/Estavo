@@ -1,3 +1,0 @@
-name = "superadmin"
-compatibility_date = "2024-06-13"
-compatibility_flags = ["nodejs_compat"]
