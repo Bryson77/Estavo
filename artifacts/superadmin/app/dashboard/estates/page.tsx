@@ -36,9 +36,9 @@ export default async function EstatesPage() {
       name: e.name,
       address: e.address || "",
       unitCount: e.unit_count || 0,
-      subscriptionTier: e.plan_notes?.toLowerCase().includes("enterprise") ? "enterprise" : 
+      subscriptionTier: (e.plan_notes?.toLowerCase().includes("enterprise") ? "enterprise" : 
                         e.plan_notes?.toLowerCase().includes("growth") ? "growth" : 
-                        e.plan_notes?.toLowerCase().includes("estate") ? "estate" : "starter",
+                        e.plan_notes?.toLowerCase().includes("estate") ? "estate" : "starter") as "starter" | "growth" | "estate" | "enterprise",
       subscriptionStatus: e.payment_status || "active",
       isActive: e.status === "active",
       isPilot: e.plan_notes?.toLowerCase().includes("pilot") || false,

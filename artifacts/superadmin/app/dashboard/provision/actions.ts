@@ -77,7 +77,7 @@ export async function provisionEstate(data: {
     community_board_enabled: data.communityBoardEnabled,
     anonymous_posting_allowed: data.anonymousPostingAllowed,
     amenities_enabled: data.amenitiesEnabled,
-  }).then(() => {}).catch(() => {});
+  });
 
   // 3. Create gates (ignore if table doesn't exist yet)
   if (data.gates.length > 0) {
@@ -90,7 +90,7 @@ export async function provisionEstate(data: {
         device_key: crypto.randomUUID(),
         status: "offline",
       }))
-    ).then(() => {}).catch(() => {});
+    );
   }
 
   // 4. Create manager profile in users table
@@ -99,7 +99,7 @@ export async function provisionEstate(data: {
       estate_id: estateId,
       email: data.managerEmail,
       role: "manager",
-    }).then(() => {}).catch(() => {});
+    });
   }
 
   // 5. Create staff profiles
@@ -110,7 +110,7 @@ export async function provisionEstate(data: {
         email: s.email,
         role: s.role,
       }))
-    ).then(() => {}).catch(() => {});
+    );
   }
 
   revalidatePath("/dashboard");
