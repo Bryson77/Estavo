@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronDown, AlertTriangle, Zap, Bell, Check, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { errors } from "@/lib/mock-data";
+import { useErrors, ErrorData } from "@/lib/api";
 import { PageHeader, StatCard, Panel, Badge, RowActions } from "@/components/shared";
 
 function Drawer({ title, close, children }: { title: string; close: () => void; children: React.ReactNode }) {
@@ -22,7 +22,8 @@ function Drawer({ title, close, children }: { title: string; close: () => void; 
 }
 
 export default function ErrorsPage() {
-  const [selected, setSelected] = useState<(typeof errors)[0] | null>(null);
+  const { errors, loading } = useErrors();
+  const [selected, setSelected] = useState<ErrorData | null>(null);
   const [severity, setSeverity] = useState("All");
 
   return (
@@ -32,10 +33,10 @@ export default function ErrorsPage() {
       </PageHeader>
       
       <div className="stats-grid">
-        <StatCard label="Total errors" value="32" note="This period" icon={AlertTriangle} />
-        <StatCard label="Critical" value="7" note="3 unresolved" icon={Zap} alert />
-        <StatCard label="Warnings" value="19" note="4 unresolved" icon={Bell} />
-        <StatCard label="Resolved" value="25 / 32" note="78% resolution rate" icon={Check} />
+        <StatCard label="Total errors" value={loading ? "..." : String(errors.length)} note="This period" icon={AlertTriangle} />
+        <StatCard label="Critical" value={loading ? "..." : String(errors.filter(e => e.severity === "Critical").length)} note="3 unresolved" icon={Zap} alert />
+        <StatCard label="Warnings" value={loading ? "..." : String(errors.filter(e => e.severity === "Warning").length)} note="4 unresolved" icon={Bell} />
+        <StatCard label="Resolved" value={loading ? "..." : String(errors.filter(e => e.status === "Resolved").length)} note="resolution rate" icon={Check} />
       </div>
 
       <div className="toolbar">
@@ -57,8 +58,10 @@ export default function ErrorsPage() {
               <tr>{["Timestamp", "Severity", "Category", "Description", "Estate", "Status", "Actions"].map(x => <th key={x}>{x}</th>)}</tr>
             </thead>
             <tbody>
-              {errors.filter(e => severity === "All" || e.severity === severity).map(e => (
-                <tr className="clickable-row" key={e.time + e.category} onClick={() => setSelected(e)}>
+              {loading ? (
+                <tr><td colSpan={7} className="text-center p-8 text-muted-foreground">Loading errors...</td></tr>
+              ) : errors.filter(e => severity === "All" || e.severity === severity).map(e => (
+                <tr className="clickable-row" key={e.id} onClick={() => setSelected(e)}>
                   <td className="data-text">{e.time}</td>
                   <td><Badge>{e.severity}</Badge></td>
                   <td>{e.category}</td>

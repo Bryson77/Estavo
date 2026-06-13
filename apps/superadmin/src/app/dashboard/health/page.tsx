@@ -4,11 +4,12 @@ import { useState } from "react";
 import { ChevronDown, DoorOpen, Activity, Users, TrendingUp, TrendingDown, Gauge } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
-import { estates, months } from "@/lib/mock-data";
+import { useEstates, useMonths } from "@/lib/api";
 import { PageHeader, StatCard, Panel, SimpleTable, MiniTooltip, statusTone } from "@/components/shared";
 import { useRouter } from "next/navigation";
 
-function ChartBars({ dataKey }: { dataKey: "health" | "adoption" }) {
+function ChartBars({ dataKey, estates }: { dataKey: "health" | "adoption", estates: any[] }) {
+  if (!estates || !estates.length) return <div className="p-4 text-center text-muted-foreground">Loading chart...</div>;
   return (
     <div className="chart-box">
       <ResponsiveContainer>
@@ -28,7 +29,8 @@ function ChartBars({ dataKey }: { dataKey: "health" | "adoption" }) {
   );
 }
 
-function ComboChart() {
+function ComboChart({ months }: { months: any[] }) {
+  if (!months || !months.length) return <div className="p-4 text-center text-muted-foreground">Loading chart...</div>;
   return (
     <div className="chart-box">
       <ResponsiveContainer>
@@ -47,6 +49,8 @@ function ComboChart() {
 
 export default function HealthPage() {
   const router = useRouter();
+  const { estates, loading: estatesLoading } = useEstates();
+  const { months, loading: monthsLoading } = useMonths();
 
   const openEstate = (name: string) => {
     router.push(`/dashboard/estates/${encodeURIComponent(name.toLowerCase().replace(/ /g, '-'))}`);
@@ -68,7 +72,7 @@ export default function HealthPage() {
       <div className="chart-grid-two">
         <Panel title="Estate health scores">
           <div className="health-bars">
-            {estates.map(e => (
+            {estatesLoading ? <div className="p-4 text-center text-muted-foreground">Loading...</div> : estates.map(e => (
               <button key={e.name} onClick={() => openEstate(e.name)}>
                 <span>{e.name}<b>{e.health}%</b></span>
                 <div className="progress">
@@ -80,15 +84,15 @@ export default function HealthPage() {
         </Panel>
         
         <Panel title="Gate uptime by estate">
-          <ChartBars dataKey="health" />
+          <ChartBars dataKey="health" estates={estates} />
         </Panel>
         
         <Panel title="Ticket volume & resolution trend">
-          <ComboChart />
+          <ComboChart months={months} />
         </Panel>
         
         <Panel title="Resident adoption by estate">
-          <ChartBars dataKey="adoption" />
+          <ChartBars dataKey="adoption" estates={estates} />
         </Panel>
       </div>
 

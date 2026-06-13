@@ -1,7 +1,6 @@
 import React from "react";
 import { Activity, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { estates } from "@/lib/mock-data";
 import Link from "next/link";
 
 export function statusTone(value: string | number) {
@@ -44,7 +43,11 @@ export function MiniTooltip({ active, payload, label }: { active?: boolean; payl
   return <div className="chart-tooltip"><span>{label}</span>{payload.map((item) => <strong key={item.name}>{item.name}: {item.value.toLocaleString("en-ZA")}</strong>)}</div>;
 }
 
-export function EstateTable({ compact = false }: { compact?: boolean }) {
+export function EstateTable({ compact = false, estates = [] }: { compact?: boolean; estates?: Array<any> }) {
+  if (!estates.length) {
+    return <div className="p-8 text-center text-muted-foreground border border-dashed rounded-lg">Loading estates...</div>;
+  }
+
   return (
     <div className="table-scroll">
       <table>

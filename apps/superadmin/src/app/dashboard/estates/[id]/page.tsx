@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Gauge, Users, ClipboardList, DoorOpen, TestTube2, Download, UserPlus, MessageSquare, WalletCards, CircleDollarSign, Check, Receipt, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { estates } from "@/lib/mock-data";
+import { useEstates } from "@/lib/api";
 import { PageHeader, Badge, StatCard, Panel, SimpleTable, RowActions, statusTone } from "@/components/shared";
 import Link from "next/link";
 import { use } from "react";
@@ -139,9 +139,18 @@ function EstateBillingTab() {
 export default function EstateDetail({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const name = decodeURIComponent(unwrappedParams.id).replace(/-/g, ' ');
-  const estate = estates.find(e => e.name.toLowerCase() === name.toLowerCase()) ?? estates[0];
+  const { estates, loading } = useEstates();
+  const estate = estates.find(e => e.name.toLowerCase() === name.toLowerCase());
   const [tab, setTab] = useState<EstateTab>("Overview");
   const tabs: EstateTab[] = ["Overview", "Gates", "Residents", "Maintenance", "Manager Activity", "Billing"];
+
+  if (loading) {
+    return <div className="p-8 text-center text-muted-foreground border border-dashed rounded-lg">Loading estate details...</div>;
+  }
+
+  if (!estate) {
+    return <div className="p-8 text-center text-muted-foreground">Estate not found.</div>;
+  }
 
   return (
     <>

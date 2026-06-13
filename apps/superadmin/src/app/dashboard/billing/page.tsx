@@ -2,10 +2,12 @@
 
 import { Download, CreditCard, CircleDollarSign, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { estates } from "@/lib/mock-data";
+import { useEstates } from "@/lib/api";
 import { PageHeader, StatCard, Panel, SimpleTable, Badge, RowActions } from "@/components/shared";
 
 export default function BillingPage() {
+  const { estates, loading } = useEstates();
+
   return (
     <>
       <PageHeader eyebrow="Finance" title="Billing & Subscriptions" subtitle="Manage estate subscriptions and invoice history.">
@@ -20,6 +22,7 @@ export default function BillingPage() {
       </div>
 
       <Panel title="Subscriptions">
+        {loading ? <div className="p-8 text-center text-muted-foreground border border-dashed rounded-lg">Loading subscriptions...</div> : (
         <SimpleTable 
           headers={["Estate", "Plan", "Monthly fee", "Billing contact", "Status", "Next invoice", "Actions"]} 
           rows={estates.slice(0, 4).map(e => [
@@ -32,9 +35,11 @@ export default function BillingPage() {
             <RowActions key="2" labels={["Edit", "Suspend", "Send invoice"]} />
           ])} 
         />
+        )}
       </Panel>
 
       <Panel title="Invoice history">
+        {loading ? <div className="p-8 text-center text-muted-foreground border border-dashed rounded-lg">Loading history...</div> : (
         <SimpleTable 
           headers={["Estate", "Invoice #", "Date", "Amount", "Status", "Action"]} 
           rows={estates.slice(0, 4).map((e, i) => [
@@ -46,6 +51,7 @@ export default function BillingPage() {
             <Button key="2" variant="ghost" size="sm"><Download />PDF</Button>
           ])} 
         />
+        )}
       </Panel>
     </>
   );

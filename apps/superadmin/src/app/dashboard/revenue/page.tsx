@@ -4,10 +4,11 @@ import { useState } from "react";
 import { ChevronDown, Download, CircleDollarSign, TrendingUp, Receipt, WalletCards, BarChart3, Gauge, Plus } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
-import { estates, months } from "@/lib/mock-data";
+import { useEstates, useMonths } from "@/lib/api";
 import { PageHeader, StatCard, Panel, SimpleTable, Badge, RowActions, MiniTooltip } from "@/components/shared";
 
-function DualBar() {
+function DualBar({ months }: { months: any[] }) {
+  if (!months || !months.length) return <div className="p-4 text-center text-muted-foreground">Loading chart...</div>;
   return (
     <div className="chart-box">
       <ResponsiveContainer>
@@ -23,7 +24,8 @@ function DualBar() {
   );
 }
 
-function LineOnly() {
+function LineOnly({ months }: { months: any[] }) {
+  if (!months || !months.length) return <div className="p-4 text-center text-muted-foreground">Loading chart...</div>;
   return (
     <div className="chart-box">
       <ResponsiveContainer>
@@ -39,7 +41,8 @@ function LineOnly() {
   );
 }
 
-function RevenuePie() {
+function RevenuePie({ estates }: { estates: any[] }) {
+  if (!estates || !estates.length) return <div className="p-4 text-center text-muted-foreground">Loading chart...</div>;
   return (
     <div className="chart-box">
       <ResponsiveContainer>
@@ -58,6 +61,8 @@ function RevenuePie() {
 
 export default function RevenuePage() {
   const [expenseOpen, setExpenseOpen] = useState(false);
+  const { estates, loading: estatesLoading } = useEstates();
+  const { months, loading: monthsLoading } = useMonths();
 
   return (
     <>
@@ -77,6 +82,7 @@ export default function RevenuePage() {
       </div>
 
       <Panel title="Revenue breakdown">
+        {estatesLoading ? <div className="p-8 text-center text-muted-foreground border border-dashed rounded-lg">Loading revenue data...</div> : (
         <SimpleTable 
           headers={["Estate", "Plan", "Monthly fee", "Status", "Last payment", "Actions"]} 
           rows={estates.slice(0, 4).map(e => [
@@ -88,6 +94,7 @@ export default function RevenuePage() {
             <RowActions key="actions" labels={["Edit amount", "Send reminder"]} />
           ])} 
         />
+        )}
       </Panel>
 
       <div className="section-heading">
@@ -110,9 +117,9 @@ export default function RevenuePage() {
       </Panel>
 
       <div className="chart-grid-three">
-        <Panel title="Revenue vs expenses"><DualBar /></Panel>
-        <Panel title="Net profit trend"><LineOnly /></Panel>
-        <Panel title="Revenue by estate"><RevenuePie /></Panel>
+        <Panel title="Revenue vs expenses"><DualBar months={months} /></Panel>
+        <Panel title="Net profit trend"><LineOnly months={months} /></Panel>
+        <Panel title="Revenue by estate"><RevenuePie estates={estates} /></Panel>
       </div>
     </>
   );
