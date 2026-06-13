@@ -90,11 +90,7 @@ export default async function DashboardPage() {
       payment_status,
       status,
       plan_notes,
-      created_at,
-      users (
-        email,
-        role
-      )
+      created_at
     `)
     .order("created_at", { ascending: false });
 
@@ -104,8 +100,6 @@ export default async function DashboardPage() {
 
   // Transform to match the expected Estate interface
   const estates = (data || []).map((e: any) => {
-    const manager = e.users?.find((u: any) => u.role === "manager");
-
     return {
       id: e.id,
       appEstateId: e.id,
@@ -116,7 +110,7 @@ export default async function DashboardPage() {
                         e.plan_notes?.toLowerCase().includes("estate") ? "estate" : "starter",
       subscriptionStatus: e.payment_status || "active",
       isActive: e.status === "active",
-      managerEmail: manager?.email || null,
+      managerEmail: null,
       monthlyAmountZar: e.monthly_fee_rands || 0,
       createdAt: e.created_at,
     };

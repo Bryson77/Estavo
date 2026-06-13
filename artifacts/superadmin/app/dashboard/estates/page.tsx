@@ -13,11 +13,7 @@ export default async function EstatesPage() {
       payment_status,
       status,
       plan_notes,
-      created_at,
-      users (
-        email,
-        role
-      )
+      created_at
     `)
     .order("created_at", { ascending: false });
 
@@ -27,9 +23,6 @@ export default async function EstatesPage() {
 
   // Transform to match the expected Estate interface
   const estates = (data || []).map((e: any) => {
-    // Find the manager's email if available
-    const manager = e.users?.find((u: any) => u.role === "manager");
-
     return {
       id: e.id,
       appEstateId: e.id,
@@ -43,7 +36,7 @@ export default async function EstatesPage() {
       isActive: e.status === "active",
       isPilot: e.plan_notes?.toLowerCase().includes("pilot") || false,
       pilotDiscountPct: e.plan_notes?.toLowerCase().includes("pilot") ? 50 : 0,
-      managerEmail: manager?.email || null,
+      managerEmail: null,
       monthlyAmountZar: e.monthly_fee_rands || 0,
       createdAt: e.created_at,
     };

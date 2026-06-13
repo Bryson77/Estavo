@@ -9,11 +9,7 @@ export default async function BillingPage() {
       name,
       monthly_fee_rands,
       payment_status,
-      plan_notes,
-      users (
-        email,
-        role
-      )
+      plan_notes
     `)
     .order("name", { ascending: true });
 
@@ -23,8 +19,6 @@ export default async function BillingPage() {
 
   // Transform to match the expected format
   const estates = (data || []).map((e: any) => {
-    const manager = e.users?.find((u: any) => u.role === "manager");
-
     return {
       id: e.id,
       name: e.name,
@@ -34,7 +28,7 @@ export default async function BillingPage() {
       mrr: e.monthly_fee_rands || 0,
       isPilot: e.plan_notes?.toLowerCase().includes("pilot") || false,
       pilotDiscount: e.plan_notes?.toLowerCase().includes("pilot") ? 50 : 0, // Assumption based on mock
-      managerEmail: manager?.email || "—",
+      managerEmail: "—",
     };
   });
 
