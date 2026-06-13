@@ -3,13 +3,16 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "build": "pnpm run typecheck && pnpm -r --if-present run build",
-    "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean"
   },
   "private": true,
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "prettier": "^3.8.3",
+    "turbo": "^2.9.18",
     "typescript": "~5.9.3"
   },
   "packageManager": "pnpm@11.5.2"
