@@ -5,9 +5,9 @@
   "main": "expo-router/entry",
   "scripts": {
     "dev": "cross-env EXPO_USE_METRO_WORKSPACE_ROOT=1 EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1 pnpm exec expo start --port 8081",
-    "build": "EXPO_PUBLIC_DOMAIN=$RAILWAY_PUBLIC_DOMAIN node scripts/build.js",
-    "serve": "node server/serve.js",
-    "start": "node server/serve.js",
+    "build": "npx expo export -p web",
+    "serve": "npx serve dist -s",
+    "start": "npx serve dist -s",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
