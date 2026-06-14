@@ -38,12 +38,11 @@ export default function GuestsScreen() {
   const { guestCodes, guestStats, isLoading, deactivateGuestCode, refreshGuests } = useApp();
   const [refreshing, setRefreshing] = useState(false);
 
-  const initials = user
-    ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase()
-    : "?";
+  const initials = user?.firstName ? user.firstName[0].toUpperCase() : "?";
   const subLabel = user
-    ? `RESIDENT · ${user.firstName?.toUpperCase()} ${user.lastName?.[0]?.toUpperCase()}.`
+    ? `UNIT ${user.unitNumber} · ${user.estateName?.toUpperCase()}`
     : "RESIDENT";
+  const titleLabel = user ? `${user.firstName} ${user.lastName}` : "Estavo";
 
   const onRefresh = async () => {
     setRefreshing(true);

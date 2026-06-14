@@ -36,17 +36,30 @@ router.get("/", async (req: Request, res: Response): Promise<any> => {
       return res.status(500).json({ error: "Failed to fetch guest codes" });
     }
 
-    // Mock stats based on the fetched data
-    // Map the database columns to what the frontend expects if needed.
-    // Or just pass the raw objects. The frontend might need 'code' mapping.
-    const mappedCodes = codes?.map(c => ({
-      ...c,
-      code: c.otp_code, // Alias for frontend
-      visitor_name: c.guest_name,
-      status: c.revoked_at ? "revoked" : (c.used_at ? "used" : "active")
-    })) || [];
+    const mappedCodes = codes?.map(c => {
+      const nameParts = c.guest_name ? c.guest_name.split(" ") : ["Guest"];
+      const firstName = nameParts[0];
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+      const isActive = !c.revoked_at && new Date(c.valid_until) > new Date();
 
-    const activeCodes = mappedCodes.filter((c) => c.status === "active").length || 0;
+      return {
+        id: c.id,
+        guestFirstName: firstName,
+        guestLastName: lastName,
+        guestPhone: c.guest_phone || "",
+        isParcel: c.is_parcel || false,
+        pinCode: c.otp_code,
+        qrPayload: `estavo://guest/${c.otp_code}`,
+        validFrom: c.valid_from,
+        validUntil: c.valid_until,
+        usesRemaining: c.uses_remaining,
+        usesTotal: c.uses_total,
+        isActive: isActive,
+        createdAt: c.created_at
+      };
+    }) || [];
+
+    const activeCodes = mappedCodes.filter((c) => c.isActive).length || 0;
     const insideNow = 0; // Placeholder
 
     return res.json({
@@ -119,11 +132,25 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
       return res.status(500).json({ error: "Failed to create guest code" });
     }
 
+    const nameParts = rawCode.guest_name ? rawCode.guest_name.split(" ") : ["Guest"];
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+    const isActive = !rawCode.revoked_at && new Date(rawCode.valid_until) > new Date();
+
     const code = {
-      ...rawCode,
-      code: rawCode.otp_code,
-      visitor_name: rawCode.guest_name,
-      status: "active"
+      id: rawCode.id,
+      guestFirstName: firstName,
+      guestLastName: lastName,
+      guestPhone: rawCode.guest_phone || "",
+      isParcel: rawCode.is_parcel || false,
+      pinCode: rawCode.otp_code,
+      qrPayload: `estavo://guest/${rawCode.otp_code}`,
+      validFrom: rawCode.valid_from,
+      validUntil: rawCode.valid_until,
+      usesRemaining: rawCode.uses_remaining,
+      usesTotal: rawCode.uses_total,
+      isActive: isActive,
+      createdAt: rawCode.created_at
     };
 
     return res.json({ code });

@@ -171,12 +171,11 @@ export default function ReportsScreen() {
   const [filter, setFilter] = useState<Filter>("all");
   const [archivedOpen, setArchivedOpen] = useState(false);
 
-  const initials = user
-    ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase()
-    : "?";
+  const initials = user?.firstName ? user.firstName[0].toUpperCase() : "?";
   const subLabel = user
-    ? `RESIDENT · ${user.firstName?.toUpperCase()} ${user.lastName?.[0]?.toUpperCase()}.`
+    ? `UNIT ${user.unitNumber} · ${user.estateName?.toUpperCase()}`
     : "RESIDENT";
+  const titleLabel = user ? `${user.firstName} ${user.lastName}` : "Estavo";
 
   const activeReports = reports.filter((r) => r.status !== "closed");
   const closedReports = reports.filter((r) => r.status === "closed");
@@ -189,7 +188,11 @@ export default function ReportsScreen() {
   if (isLoading && reports.length === 0) {
     return (
       <View style={[styles.screen, { backgroundColor: colors.background }]}>
-        <ScreenHeader title="Reports" subtitle={subLabel} showAvatar initials={initials} />
+        {Platform.OS !== "web" ? (
+          <ScreenHeader title={titleLabel} subtitle={subLabel} showAvatar initials={initials} />
+        ) : (
+          <View style={styles.webHeaderOffset} />
+        )}
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
         </View>
@@ -199,7 +202,7 @@ export default function ReportsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <ScreenHeader title="Reports" subtitle={subLabel} showAvatar initials={initials} />
+      <ScreenHeader title={titleLabel} subtitle={subLabel} showAvatar initials={initials} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
