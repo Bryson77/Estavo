@@ -4,12 +4,19 @@ const BASE_URL = (() => {
   if (typeof process !== "undefined" && process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
-  const replId = Constants.expoConfig?.extra?.replId ?? process.env.EXPO_PUBLIC_REPL_ID;
   const domain = Constants.expoConfig?.extra?.domain ?? process.env.EXPO_PUBLIC_DOMAIN;
   if (domain) {
     return `https://${domain}/api`;
   }
-  return "http://localhost:8080/api";
+  
+  // If running in Expo Go on a local network, dynamically grab the computer's IP
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    return `http://${ip}:3000/api`;
+  }
+  
+  return "http://localhost:3000/api";
 })();
 
 let onAuthErrorCallback: (() => void) | null = null;
